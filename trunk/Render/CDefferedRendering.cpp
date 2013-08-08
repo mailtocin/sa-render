@@ -2,6 +2,7 @@
 #include "CRender.h"
 #include "CPatch.h"
 #include "CGame.h"
+#include "CDebug.h"
 #include "CVehicleRender.h"
 #include "CObjectRender.h"
 #include "CPedsRender.h"
@@ -41,21 +42,10 @@ IDirect3DTexture9 *clouds;
 IDirect3DCubeTexture9 *CDefferedRendering::cubemap;
 // D3D parameters
 D3DPRESENT_PARAMETERS *g_D3Dpp = (D3DPRESENT_PARAMETERS *) 0xC9C040;
-// Shadow (maybe unused) stuff
-const int CONST_SPLIT_COUNT = 4;
-float m_fLightFarPlanes[];
+// Shadow stuff
 float m_fExtraDistance;
-float m_fSplitLambda;
-int m_nShadowMapSize;
-RwBBox *m_pSceneBoundingBox;
-float m_faSplitDistances[CONST_SPLIT_COUNT+1];
-D3DXVECTOR3 *m_vaFrustumCorners[8];
 D3DXVECTOR3 *m_vUpVector;
-D3DXMATRIX m_mShadowMapTextureMatrix;
-D3DXMATRIX m_maShadowMapTextureMatrices[CONST_SPLIT_COUNT];
-D3DXMATRIX m_maLightViewProjection[CONST_SPLIT_COUNT];
 D3DXVECTOR3 m_vLightDirection;
-bool CDefferedRendering::m_baSplitColorChannels[4][4];
 
 // Setup function
 bool CDefferedRendering::Setup()
@@ -70,14 +60,8 @@ bool CDefferedRendering::Setup()
 	D3DXCreateTextureFromFile(g_Device,"noise.png",&noise);
 	D3DXCreateTextureFromFile(g_Device,"clouds.tga",&clouds);
 	D3DXCreateCubeTextureFromFile(g_Device,"grace_diffuse_cube.dds",&cubemap);
-	if(errors)
+	if(!CDebug::CheckForD3D9Errors(errors,"CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx",result))
 	{
-		MessageBox(0, (char *)errors->GetBufferPointer(), 0, 0);
-		errors->Release();
-	}
-	if(FAILED(result))
-	{
-		MessageBox(0, "CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx", 0, 0);
 		return false;
 	}
 	// Creating Post-Process stuff
