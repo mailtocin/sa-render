@@ -701,17 +701,11 @@ void CDefferedRendering::Idle(void *a)
 			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_DEPTHSTENCIL,D3DFMT_D24S8,D3DPOOL_DEFAULT,&shadow[3],NULL);
 			shadow[3]->GetSurfaceLevel(0,&shadowSurface[3]);
 		}
-		if(!gbuffer[0]){
-			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&gbuffer[0],NULL);
-			gbuffer[0]->GetSurfaceLevel(0,&gbSurface[0]);
-		}
-		if(!gbuffer[1]){
-			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&gbuffer[1],NULL);
-			gbuffer[1]->GetSurfaceLevel(0,&gbSurface[1]);
-		}
-		if(!gbuffer[2]){
-			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A32B32G32R32F,D3DPOOL_DEFAULT,&gbuffer[2],NULL);
-			gbuffer[2]->GetSurfaceLevel(0,&gbSurface[2]);
+		for(int i =0;i<3;i++){
+			if(!gbuffer[i]){
+				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&gbuffer[i],NULL);
+				gbuffer[i]->GetSurfaceLevel(0,&gbSurface[i]);
+			}
 		}
 		if(!lightingTexture){
 			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&lightingTexture,NULL);
