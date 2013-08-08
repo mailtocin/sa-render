@@ -4,8 +4,7 @@
 #include "CRender.h"
 #include "RenderWare.h"
 #include "CPatch.h"
-#include <d3d9.h>
-#include <d3dx9.h>
+#include "D3D9Headers\d3d9.h"
 #include "CGame.h"
 #include <windows.h>
 #include <stdio.h>

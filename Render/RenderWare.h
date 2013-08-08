@@ -12,7 +12,7 @@
 
 #ifndef _IDA_EXPORT
 #include <stdarg.h>
-#include <d3dx9.h>
+#include "D3D9Headers\d3dx9.h"
 #endif
 // defines
 #define RWFORCEENUMSIZEINT ((int)((~((unsigned int)0))>>1))
