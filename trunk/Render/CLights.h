@@ -1,8 +1,8 @@
 #pragma once
 #include "RenderWare.h"
 #include "game\CVector.h"
-#include <d3d9.h>
-#include <d3dx9.h>
+#include "D3D9Headers\d3d9.h"
+#include "D3D9Headers\d3dx9.h"
 
 #define MAX_GAME_LIGHTS 50
 

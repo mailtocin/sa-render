@@ -1,5 +1,5 @@
 #pragma once
-#include <d3dx9.h>
+#include "D3D9Headers\d3dx9.h"
 
 class CRender
 {
