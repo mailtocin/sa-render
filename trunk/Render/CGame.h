@@ -3,7 +3,7 @@
 /* File editors: DK22Pac                                                                   */
 /* File descrip: GTA structures/enumerations/functions/defines are represented here.       */
 /* File created: 17.05.2013                                                                */
-/* File last ed: 17.05.2013                                                                */
+/* File last ed: 09.08.2013                                                                */
 /*******************************************************************************************/
 #pragma once
 #include "RenderWare.h"
@@ -46,6 +46,9 @@
 #define D3D9ViewProjTransform ((RwMatrix*)0xC94C30)
 #define D3D9ActiveTransform ((RwMatrix*)0xC94C70)
 #define D3D9Transform ((D3DXMATRIX*)0x8D7390)
+#define gMirrorsRenderingState (*(unsigned char *)0xC7C728)
+#define flt_8CD4F0 (*(float *)0x8CD4F0)
+#define flt_8CD4EC (*(float *)0x8CD4EC)
 
 #define UpdateTimer() ((void (__cdecl *)())0x561B10)()
 #define InitSprite2dPerFrame() ((void (__cdecl *)())0x727350)()
@@ -94,6 +97,14 @@
 #define RenderFadingInUnderwaterEntities() ((void (__cdecl *)())0x553220)()
 #define RenderWater() ((void (__cdecl *)())0x6EF650)()
 #define RenderFadingInEntities() ((void (__cdecl *)())0x5531E0)()
+#define sub_707F40() ((void (__cdecl *)())0x707F40)()
+#define RenderStaticShadows() ((void (__cdecl *)())0x708300)()
+#define RenderStoredShadows() ((void (__cdecl *)())0x70A960)()
+#define RenderGrass() ((void (__cdecl *)())0x5DBAE0)()
+#define sub_7154B0() ((void (__cdecl *)())0x7154B0)()
+#define RenderRainStreaks() ((void (__cdecl *)())0x72AF70)()
+#define RenderSunReflection() ((void (__cdecl *)())0x6FBAA0)()
+#define RenderStencil() ((unsigned char (__cdecl *)())0x7113B0)()
 #define MatrixSet(t, m) ((void (__thiscall *)(CMatrix *, CMatrix *))0x59BBC0)(t, m)
 #define UpdateCameraFrame(t, b) ((void (__thiscall *)(CCamera *, unsigned char))0x50AFA0)(t, b)
 #define SetPlaceableMatrix(t, m) ((void (__thiscall *)(CPlaceable *, CMatrix *))0x54F610)(t, m)
