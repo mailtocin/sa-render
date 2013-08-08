@@ -13,8 +13,8 @@ public:
 
 	static void Initialize();
 	static void Shutdown();
-	static void StoreVertexDeclaration(IDirect3DVertexDeclaration9 *declaration, LPCSTR message, HRESULT result);
-	static bool CheckForD3D9Errors(ID3DXBuffer *declaration);
+	static void StoreVertexDeclaration(IDirect3DVertexDeclaration9 *declaration);
+	static bool CheckForD3D9Errors(ID3DXBuffer *declaration, LPCSTR message, HRESULT result);
 };
 
 // Vertex declaration stuff
