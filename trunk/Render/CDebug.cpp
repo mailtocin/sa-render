@@ -15,6 +15,20 @@ void CDebug::Initialize()
 #endif
 }
 
+bool CDebug::CheckForD3D9Errors(ID3DXBuffer* errors, LPCSTR message, HRESULT result){
+	if(errors)
+	{
+		MessageBox(0, (char *)errors->GetBufferPointer(), 0, 0);
+		errors->Release();
+	}
+	if(FAILED(result))
+	{
+		MessageBox(0, "CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx", 0, 0);
+		return false;
+	}
+	return true;
+}
+
 void CDebug::Shutdown()
 {
 // Closing all files - here!
