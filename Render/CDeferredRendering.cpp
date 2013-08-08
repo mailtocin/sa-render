@@ -5,6 +5,7 @@
 #include "CVehicleRender.h"
 #include "CObjectRender.h"
 #include "CPedsRender.h"
+#include "CLights.h"
 #include <stdio.h>
 #include <sstream>
 
@@ -92,47 +93,6 @@ bool CDeferredRendering::Setup()
 	return true;
 }
 
-//-------------------------------------Light stuff------------------------------------------------
-int g_iNumNewLights;
-CLight g_aNewLights[50];
-void AddNewLight(char type, float x, float y, float z, float x_dir, float y_dir, float z_dir,
-						 float radius, float red, float green, float blue, char fogType, char generateExtraShadows,
-						 int entityAffected)
-{
-	if(g_iNumNewLights < 50)
-	{
-		g_aNewLights[g_iNumNewLights].pos.x = x;
-		g_aNewLights[g_iNumNewLights].pos.y = y;
-		g_aNewLights[g_iNumNewLights].pos.z = z;
-		g_aNewLights[g_iNumNewLights].dir.x = x_dir;
-		g_aNewLights[g_iNumNewLights].dir.y = y_dir;
-		g_aNewLights[g_iNumNewLights].dir.z = z_dir;
-		g_aNewLights[g_iNumNewLights].radius = radius;
-		g_aNewLights[g_iNumNewLights].red = red;
-		g_aNewLights[g_iNumNewLights].green = green;
-		g_aNewLights[g_iNumNewLights].blue = blue;
-		g_aNewLights[g_iNumNewLights].type = type;
-		g_aNewLights[g_iNumNewLights].generateShadows = generateExtraShadows;
-		if(fogType > 100)
-		{
-			g_aNewLights[g_iNumNewLights].fogType = 0;
-			g_aNewLights[g_iNumNewLights].subType = fogType - 100;
-		}
-		else
-		{
-			g_aNewLights[g_iNumNewLights].fogType = fogType;
-			g_aNewLights[g_iNumNewLights].subType = 0;
-		}
-		g_iNumNewLights++;
-	}
-}
-DWORD g_aAddLightCallTable[] = { 0x47B0D8, 0x48ED76, 0x49DF47, 0x53632D,
-	0x5364B4, 0x53AEAC, 0x6AB80F, 0x6ABBA6,
-	0x6BD641, 0x6D4D14, 0x6E27E6, 0x6E28E7,
-	0x6FD105, 0x6FD347, 0x737849, 0x7378C1,
-	0x73AF74, 0x73CCFD, 0x740D68 };
-
-//------------------------------------------------------------------------------------------------
 // Im3d Draw Function
 HRESULT __fastcall Im3D_DrawIndexedPrimitive(int ecx0,
 											 int edx0,
@@ -192,7 +152,7 @@ void CDeferredRendering::DrawPostProcessPass() {
 	m_pEffect->End();
 }
 
-// On Lost Device
+//-------------------On Lost Device-------------------
 void CDeferredRendering::Lost()
 {
 	for(int i = 0;i<4;i++) {
@@ -212,13 +172,13 @@ void CDeferredRendering::Lost()
 	if(m_pEffect)
 		m_pEffect->OnLostDevice();
 }
+//----------------------------------------------------
 
 // Patch Function
 void CDeferredRendering::Patch()
 {
 	CPatch::RedirectCall(0x53ECBD, Idle);
-	for(int i = 0; i<19; i++)
-		CPatch::RedirectCall(g_aAddLightCallTable[i], AddNewLight);
+	CLights::Patch();
 	CPatch::Nop(0x80E707, 1);
 	CPatch::RedirectCall(0x80E708, Im3D_DrawIndexedPrimitive);
 	CPatch::Nop(0x80E931, 1);
@@ -573,7 +533,7 @@ void CDeferredRendering::Idle(void *a)
 	UpdateTimer();           // CTimer::Update
 	InitSprite2dPerFrame();  // CSprite2d::InitPerFrame
 	NumPointLights = 0;      // CPointLights::NumLights
-	g_iNumNewLights = 0;
+	CLights::m_nNumLights = 0;
 	InitFontPerFrame();      // CFont::InitPerFrame
 	ProcessGame();           // CGame::Process
 	ServiceDMAudio(DMAudio); // cDMAudio::Service
@@ -779,20 +739,23 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetVector("sLP",new D3DXVECTOR4(sunpos.x+camPos.x,sunpos.y+camPos.y,sunpos.z+camPos.z,1));
 		DrawPostProcessPass();
 		m_pEffect->SetTechnique("DefShadPL");
-		if(g_iNumNewLights>1) {
-			for(int l = 0; l<g_iNumNewLights;l++){
-				D3DXVECTOR3 pos;
-				RECT sr;
-				if(g_aNewLights[l].subType != 1){
-					pos = D3DXVECTOR3(g_aNewLights[l].pos.x,g_aNewLights[l].pos.y,g_aNewLights[l].pos.z);
-					sr = DetermineClipRect(pos,g_aNewLights[l].radius,view,proj,1024,768);
-					m_pEffect->SetVector("sLP",new D3DXVECTOR4(g_aNewLights[l].pos.x,g_aNewLights[l].pos.y,g_aNewLights[l].pos.z,1));
-					m_pEffect->SetVector("PointLightColor",new D3DXVECTOR4(g_aNewLights[l].red,g_aNewLights[l].green,g_aNewLights[l].blue,1));
-					m_pEffect->SetFloat("PointLightRange",g_aNewLights[l].radius);
-					g_Device->SetScissorRect(&sr);
-					DrawPostProcessPass();
-				}
-			}
+		if(CLights::m_nNumLights > 0)
+		{
+		for(int l = 0; l < CLights::m_nNumLights; l++)
+		{
+		D3DXVECTOR3 pos;
+		RECT sr;
+		if(CLights::m_aLights[l].mode == LIGHT_MODE_POINT)
+		{
+			pos = D3DXVECTOR3(CLights::m_aLights[l].pos.x, CLights::m_aLights[l].pos.y, CLights::m_aLights[l].pos.z);
+			sr = DetermineClipRect(pos, CLights::m_aLights[l].radius, view, proj, 1024, 768);
+			m_pEffect->SetVector("sLP",new D3DXVECTOR4(CLights::m_aLights[l].pos.x,CLights::m_aLights[l].pos.y,CLights::m_aLights[l].pos.z,1));
+			m_pEffect->SetVector("PointLightColor",new D3DXVECTOR4(CLights::m_aLights[l].red,CLights::m_aLights[l].green,CLights::m_aLights[l].blue,1));
+			m_pEffect->SetFloat("PointLightRange",CLights::m_aLights[l].radius);
+			g_Device->SetScissorRect(&sr);
+			DrawPostProcessPass();
+		}
+		}
 		}
 		g_Device->SetRenderTarget(0,rsTmpSurface[0]);
 		m_pEffect->SetTexture("lightBuffer",lightingTexture);
