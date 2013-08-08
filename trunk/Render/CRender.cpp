@@ -23,6 +23,8 @@ void CRender::Patch()
 	CObjectRender::Patch();
 	CDeferredRendering::Patch();
 	CPedsRender::Patch();
+	CLights::Patch();
+	CImmediateRender::Patch();
 }
 
 void CRender::Setup()
