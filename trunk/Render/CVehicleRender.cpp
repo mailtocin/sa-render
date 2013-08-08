@@ -135,7 +135,7 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 	RxD3D9InstanceData *mesh;
 	UINT passes;
 	D3DXMATRIX world;
-	D3DXMATRIX worldViewProj,lightProj,sunMatrix,lightView,vp,proj,worldtransp,viewinv,view,wv;
+	D3DXMATRIX worldViewProj,lightProj,sunMatrix,lightView,vp,proj,worldtransp,viewinv,view,wv,wvi;
 	IDirect3DBaseTexture9 *diffuse,*bump,*specular;
 	RpGeometry *geometry = atomic->geometry;
 	unsigned int geometryFlags = geometry->flags;
@@ -181,6 +181,8 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
 	m_pEffect->SetMatrix("gmWorld",&worldtransp);
 	m_pEffect->SetMatrix("gmWorldView",&wv);
+	D3DXMatrixInverse(&wvi,NULL,&wv);
+	m_pEffect->SetMatrixTranspose("gmWorldViewIT",&wvi);
 	m_pEffect->SetMatrix("gmViewInv",&viewinv);
 	m_pEffect->SetVector("gvDirLight", &sun);
 	ambientColor.r = (float)Timecycle->m_fCurrentAmbientRed;
