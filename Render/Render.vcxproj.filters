@@ -148,6 +148,9 @@
     <Library Include="d3dx9.lib">
       <Filter>Resource Files</Filter>
     </Library>
+    <Library Include="D3DDeviceReset.lib">
+      <Filter>Resource Files</Filter>
+    </Library>
   </ItemGroup>
   <ItemGroup>
     <None Include="D3D9Headers\d3dx9math.inl">
