@@ -152,42 +152,42 @@ void CDeferredRendering::Reset()
 	if(m_pEffect)
 		m_pEffect->OnResetDevice();
 }
-// Vertex Declaration for Full-Screen Quad
-IDirect3DVertexDeclaration9*  VertDecl = NULL;
 
-// Full-Screen Quad Drawing Function... TODO: Move it to somewhere...
-void DrawFullScreenQuad(IDirect3DDevice9* pd3dDevice) {
+//------------------------Full-Screen Quad Drawing Function--------------------------------
+void DrawFullScreenQuad() {
+	IDirect3DVertexDeclaration9*  VertDecl = NULL;
 	struct Vertex {
 		D3DXVECTOR2 pos;
 		D3DXVECTOR2 tex_coord;
 	}quad[4];
-
+	// 1) We need to create quad verticles and texture coordinates.
 	quad[0].pos = D3DXVECTOR2(-1,-1); quad[0].tex_coord = D3DXVECTOR2(0,1);
 	quad[1].pos = D3DXVECTOR2(-1,1);  quad[1].tex_coord = D3DXVECTOR2(0,0);
 	quad[2].pos = D3DXVECTOR2(1,-1);  quad[2].tex_coord = D3DXVECTOR2(1,1);
 	quad[3].pos = D3DXVECTOR2(1,1);   quad[3].tex_coord = D3DXVECTOR2(1,0);
 
+	// 2) We need to create quad vertex declaration.
 	const D3DVERTEXELEMENT9 Decl[] = {
 		{ 0, 0,  D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
 		{ 0, 8, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 },
 		D3DDECL_END()
 	};
-	pd3dDevice->CreateVertexDeclaration( Decl, &VertDecl );
-
-	//rwD3D9SetVertexDeclaration( VertDecl );
-	pd3dDevice->SetVertexDeclaration(VertDecl);
-	pd3dDevice->SetRenderState(D3DRS_CULLMODE,rwCULLMODECULLNONE);
-	pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex));
-
+	g_Device->CreateVertexDeclaration( Decl, &VertDecl );
+	// 3) Finnaly we need to set it all and draw it.
+	g_Device->SetVertexDeclaration(VertDecl);
+	g_Device->SetRenderState(D3DRS_CULLMODE,rwCULLMODECULLNONE);
+	g_Device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex));
+	// 4) And don't forget to release it, otherwise you can crash.
 	SAFE_RELEASE(VertDecl);
 }
+//---------------------------------------------------------------------------------------
 
 // Post-Process Drawing Pass.... TODO: idk what to do with it... maybe make passes count in value?
 void CDeferredRendering::DrawPostProcessPass() {
 	UINT pPasses;
 	m_pEffect->Begin(&pPasses,0);
 	m_pEffect->BeginPass(0);
-	DrawFullScreenQuad(g_Device);
+	DrawFullScreenQuad();
 	m_pEffect->EndPass();
 	m_pEffect->End();
 }
