@@ -90,7 +90,7 @@
     <ClCompile Include="CTextureMaps.cpp" />
     <ClCompile Include="CVehicleRender.cpp" />
     <ClCompile Include="DllMain.cpp" />
-    <ClCompile Include="CLight.cpp" />
+    <ClCompile Include="CLights.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CDebug.h" />
@@ -101,7 +101,7 @@
     <ClInclude Include="CPatch.h" />
     <ClInclude Include="CPedsRender.h" />
     <ClInclude Include="CRender.h" />
-    <ClInclude Include="CLight.h" />
+    <ClInclude Include="CLights.h" />
     <ClInclude Include="RenderWare.h" />
     <ClInclude Include="CTextureMaps.h" />
     <ClInclude Include="CVehicleRender.h" />
