@@ -1,5 +1,4 @@
 #include "CObjectRender.h"
-#include "CDefferedRendering.h"
 #include "CVehicleRender.h"
 #include "CTextureMaps.h"
 #include "CRender.h"
@@ -198,9 +197,6 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	rwD3D9VSGetWorldViewTransposedMatrix(&wv);
 	getWorldViewProj(&worldViewProj,RwFrameGetLTM(g_DefaultRender_Atomic->object.object.parent),&vp);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
-	D3DXMatrixMultiplyTranspose(&m_LightViewProj,&CDefferedRendering::g_mLightView[0],&CDefferedRendering::g_mLightProj);
-	D3DXMatrixMultiply(&m_LightViewProj,&m_LightViewProj,&worldTransposedMatrix);
-	m_pEffect->SetMatrix("gmLightViewProj",&m_LightViewProj);
 	m_pEffect->SetMatrix("gmWorld",&world);
 	m_pEffect->SetMatrix("gmWorldView",&wv);
 	m_pEffect->SetVector("gvDirLight", &sun);
@@ -217,7 +213,6 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	memcpy(&cam, GetCamPos(), 12);
 	cam.w = 1.0;
 	m_pEffect->SetVector("gvEye", &cam);
-	m_pEffect->SetTexture("shadowTex",CDefferedRendering::shadow[1]);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
 	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
@@ -293,9 +288,6 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	rwD3D9VSGetWorldViewTransposedMatrix(&wv);
 	getWorldViewProj(&worldViewProj,RwFrameGetLTM(g_DefaultRender_Atomic->object.object.parent),&vp);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
-	D3DXMatrixMultiplyTranspose(&m_LightViewProj,&CDefferedRendering::g_mLightView[0],&CDefferedRendering::g_mLightProj);
-	D3DXMatrixMultiply(&m_LightViewProj,&m_LightViewProj,&worldTransposedMatrix);
-	m_pEffect->SetMatrix("gmLightViewProj",&m_LightViewProj);
 	m_pEffect->SetMatrix("gmWorld",&world);
 	m_pEffect->SetMatrix("gmWorldView",&wv);
 	m_pEffect->SetVector("gvDirLight", &sun);
@@ -312,7 +304,6 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	memcpy(&cam, GetCamPos(), 12);
 	cam.w = 1.0;
 	m_pEffect->SetVector("gvEye", &cam);
-	m_pEffect->SetTexture("shadowTex",CDefferedRendering::shadow[1]);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
 	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
@@ -376,15 +367,8 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 	sun.x += camPos.x;
 	sun.y += camPos.y;
 	sun.z += camPos.z;
-	D3DXMatrixMultiplyTranspose(&m_LightViewProj,&CDefferedRendering::g_mLightView[0],&CDefferedRendering::g_mLightProj);
-	D3DXMatrixMultiplyTranspose(&m_LightViewProj2,&CDefferedRendering::g_mLightView[1],&proj);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
 
-	D3DXMatrixMultiply(&m_LightViewProj,&m_LightViewProj,&worldtransp);
-	D3DXMatrixMultiply(&m_LightViewProj2,&m_LightViewProj2,&worldtransp);
-
-	m_pEffect->SetMatrix("gmLightViewProj",&m_LightViewProj);
-	m_pEffect->SetMatrix("gmLightViewProj2",&m_LightViewProj2);
 	m_pEffect->SetMatrix("gmWorld",&world);
 	m_pEffect->SetMatrix("gmWorldView",&wv);
 	m_pEffect->SetVector("gvDirLight", &sun);
@@ -401,8 +385,6 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 	memcpy(&cam, GetCamPos(), 12);
 	cam.w = 1.0;
 	m_pEffect->SetVector("gvEye", &cam);
-	m_pEffect->SetTexture("shadowTex",CDefferedRendering::shadow[1]);
-	m_pEffect->SetTexture("shadowTex2",CDefferedRendering::shadow[3]);
 	for(unsigned int i = 0; i < repEntry->header.numMeshes; i++)
 	{
 		mat = mesh->material;
