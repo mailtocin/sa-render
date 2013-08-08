@@ -65,12 +65,16 @@ bool CDeferredRendering::Setup()
 	D3DXCreateCubeTextureFromFile(g_Device,"grace_diffuse_cube.dds",&cubemap);
 	//----------------------------------------------------------------------
 
-	// Creating Post-Process stuff
+	//----------------------------------------------------------------------
+	//------------------------Post-Process stuff-----------------------------
+	// 1) We need to get postprocessing techniques count.
 	m_pEffect->GetInt("PostProcessCount",&ppTCcount);
+	// 2) We need to allocate surface/texture arrays.
 	rtTmpSurface = (IDirect3DTexture9**)calloc(ppTCcount,sizeof(IDirect3DTexture9*));
 	rsTmpSurface = (IDirect3DSurface9**)calloc(ppTCcount,sizeof(IDirect3DSurface9*));
 	surfWidth = (int*)calloc(ppTCcount,sizeof(int));
 	surfHeight = (int*)calloc(ppTCcount,sizeof(int));
+	// 3) We need to set sizes of textures
 	if(ppTCcount>1){
 		for(int i = 0; i<ppTCcount;i++){
 			std::stringstream sstm1;
@@ -85,8 +89,10 @@ bool CDeferredRendering::Setup()
 	std::string result1 = sstm1.str();
 	m_pEffect->GetInt(m_pEffect->GetAnnotation((char*)result1.c_str(),0),&surfWidth[0]);
 	m_pEffect->GetInt(m_pEffect->GetAnnotation((char*)result1.c_str(),1),&surfHeight[0]);
+	//----------------------------------------------------------------------
 	return true;
 }
+
 // Light Struct... TODO: Move it to RenderWare.h
 struct CLight{
 	RwV3D pos, dir;
