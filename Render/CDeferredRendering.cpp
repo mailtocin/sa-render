@@ -188,29 +188,30 @@ void CDeferredRendering::Patch()
 
 //-----------------Post-Process loop------------------
 void CDeferredRendering::PostProcess(IDirect3DSurface9 *outSurf){
-	std::string result;
-	std::stringstream sstm;
 	if(ppTCcount>1){
 		for(int i = 0; i<ppTCcount-1;i++){
+			std::stringstream sstm;
 			g_Device->SetRenderTarget(0,rsTmpSurface[i+1]);
 			sstm << "PostProcess_" << i;
-			result = sstm.str();
+			std::string result = sstm.str();
 			m_pEffect->SetTechnique((char*)result.c_str());
-
-			sstm << "screenBuffer_" << i;
-			result = sstm.str();
-			m_pEffect->SetTexture((char*)result.c_str(),rtTmpSurface[i]);
+			std::stringstream sstm1;
+			sstm1 << "screenBuffer_" << i;
+			std::string result1 = sstm1.str();
+			m_pEffect->SetTexture((char*)result1.c_str(),rtTmpSurface[i]);
 			DrawPostProcessPass();
 		}
 	}
 	g_Device->SetRenderTarget(0,outSurf);
+	std::stringstream sstm;
 	sstm << "PostProcess_" << ppTCcount-1;
-	result = sstm.str();
+	std::string result = sstm.str();
 	m_pEffect->SetTechnique((char*)result.c_str());
 
-	sstm << "screenBuffer_" << ppTCcount-1;
-	result = sstm.str();
-	m_pEffect->SetTexture((char*)result.c_str(),rtTmpSurface[ppTCcount-1]);
+	std::stringstream sstm1;
+	sstm1 << "screenBuffer_" << ppTCcount-1;
+	std::string result1 = sstm1.str();
+	m_pEffect->SetTexture((char*)result1.c_str(),rtTmpSurface[ppTCcount-1]);
 	DrawPostProcessPass();
 }
 //----------------------------------------------------
@@ -219,7 +220,7 @@ void CDeferredRendering::PostProcess(IDirect3DSurface9 *outSurf){
 void CDeferredRendering::DrawCubemap(){
 	RwCameraEndUpdate(Scene->m_pRwCamera);
 	if(!cubemap){
-		g_Device->CreateCubeTexture(64,1,D3DUSAGE_RENDERTARGET,D3DFMT_R8G8B8,D3DPOOL_DEFAULT,&cubemap,NULL);
+		g_Device->CreateCubeTexture(64,0,D3DUSAGE_RENDERTARGET,D3DFMT_R8G8B8,D3DPOOL_DEFAULT,&cubemap,NULL);
 	}
 	IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
 	D3DXMATRIX tmpview;
@@ -229,6 +230,8 @@ void CDeferredRendering::DrawCubemap(){
 	g_Device->GetTransform(D3DTS_PROJECTION, &proj);
 	g_Device->GetRenderTarget(0, &pOldRTSurf);
 	g_Device->GetDepthStencilSurface(&m_pZBuffer);
+	SAFE_RELEASE(pOldRTSurf);
+	SAFE_RELEASE(m_pZBuffer);
 	D3DXMATRIX matProj;
 	D3DXMatrixPerspectiveFovLH(&matProj, D3DX_PI/2, 1.0f, 0.5f, 1000.0f);
 	CVector camPos;
