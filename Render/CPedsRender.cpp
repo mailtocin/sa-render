@@ -1,7 +1,6 @@
 #include "CPedsRender.h"
 #include "CVehicleRender.h"
 #include "CTextureMaps.h"
-#include "CDeferredRendering.h"
 #include "CRender.h"
 #include "RenderWare.h"
 #include "CPatch.h"

@@ -26,7 +26,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
-    <CLRSupport>true</CLRSupport>
+    <CLRSupport>false</CLRSupport>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -90,6 +90,7 @@
     <ClCompile Include="CTextureMaps.cpp" />
     <ClCompile Include="CVehicleRender.cpp" />
     <ClCompile Include="DllMain.cpp" />
+    <ClCompile Include="CLight.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CDebug.h" />
@@ -100,13 +101,17 @@
     <ClInclude Include="CPatch.h" />
     <ClInclude Include="CPedsRender.h" />
     <ClInclude Include="CRender.h" />
+    <ClInclude Include="CLight.h" />
     <ClInclude Include="RenderWare.h" />
     <ClInclude Include="CTextureMaps.h" />
     <ClInclude Include="CVehicleRender.h" />
     <ClInclude Include="CWaterRender.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\..\..\Program Files\Microsoft DirectX SDK (June 2010)\Lib\x86\d3d9.lib" />
+    <Library Include="..\..\..\Program Files\Microsoft DirectX SDK (June 2010)\Lib\x86\d3d9.lib">
+      <FileType>Document</FileType>
+    </Library>
     <Library Include="..\..\..\Program Files\Microsoft DirectX SDK (June 2010)\Lib\x86\d3dx9.lib" />
     <Library Include="rtworld.lib" />
   </ItemGroup>

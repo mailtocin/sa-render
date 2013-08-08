@@ -2,6 +2,7 @@
 #include <d3d9.h>
 #include <d3dx9.h>
 #include "RenderWare.h"
+#include "CLight.h"
 class CDeferredRendering
 {
 public:
@@ -36,3 +37,7 @@ public:
 	static ID3DXEffect *m_pEffect;
 	static bool m_baSplitColorChannels[4][4];
 };
+
+void AddNewLight(char type, float x, float y, float z, float x_dir, float y_dir,
+							float z_dir, float radius, float red, float green, float blue,
+							char fogType, char generateExtraShadows, int entityAffected);

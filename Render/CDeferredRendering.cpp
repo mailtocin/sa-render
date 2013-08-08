@@ -1,5 +1,4 @@
 #include "CDeferredRendering.h"
-#include "CRender.h"
 #include "CPatch.h"
 #include "CGame.h"
 #include "CDebug.h"
@@ -8,7 +7,7 @@
 #include "CPedsRender.h"
 #include <stdio.h>
 #include <sstream>
-#define SAFE_RELEASE(p) {if(p){(p)->Release();(p)=NULL;}}
+
 // Shadows textures/surfaces
 IDirect3DTexture9 *CDeferredRendering::shadow[4];
 IDirect3DSurface9 *CDeferredRendering::shadowSurface[4];
@@ -93,35 +92,12 @@ bool CDeferredRendering::Setup()
 	return true;
 }
 
-// Light Struct... TODO: Move it to RenderWare.h
-struct CLight{
-	RwV3D pos, dir;
-	float radius, red, green, blue;
-	BYTE type; /*
-			   0  Omni/Point   Using position and radius.
-			   1  Directional  Using position, radius and direction.
-			   2  Shadow       It's black!
-			   4  Global       Using only position.
-			   */
-	BYTE subType; /*
-				  0 Default.
-				  1 Car headlights.
-				  2 Car backlights.
-				  3 Car LED 
-				  */
-	BYTE fogType, generateShadows;
-};
 //-------------------------------------Light stuff------------------------------------------------
 int g_iNumNewLights;
 CLight g_aNewLights[50];
-DWORD g_aAddLightCallTable[] = { 0x47B0D8, 0x48ED76, 0x49DF47, 0x53632D,
-	0x5364B4, 0x53AEAC, 0x6AB80F, 0x6ABBA6,
-	0x6BD641, 0x6D4D14, 0x6E27E6, 0x6E28E7,
-	0x6FD105, 0x6FD347, 0x737849, 0x7378C1,
-	0x73AF74, 0x73CCFD, 0x740D68 };
-void _AddLight(char type, float x, float y, float z, float x_dir, float y_dir, float z_dir,
-			   float radius, float red, float green, float blue, char fogType, char generateExtraShadows,
-			   int entityAffected)
+void AddNewLight(char type, float x, float y, float z, float x_dir, float y_dir, float z_dir,
+						 float radius, float red, float green, float blue, char fogType, char generateExtraShadows,
+						 int entityAffected)
 {
 	if(g_iNumNewLights < 50)
 	{
@@ -150,6 +126,12 @@ void _AddLight(char type, float x, float y, float z, float x_dir, float y_dir, f
 		g_iNumNewLights++;
 	}
 }
+DWORD g_aAddLightCallTable[] = { 0x47B0D8, 0x48ED76, 0x49DF47, 0x53632D,
+	0x5364B4, 0x53AEAC, 0x6AB80F, 0x6ABBA6,
+	0x6BD641, 0x6D4D14, 0x6E27E6, 0x6E28E7,
+	0x6FD105, 0x6FD347, 0x737849, 0x7378C1,
+	0x73AF74, 0x73CCFD, 0x740D68 };
+
 //------------------------------------------------------------------------------------------------
 // Im3d Draw Function
 HRESULT __fastcall Im3D_DrawIndexedPrimitive(int ecx0,
@@ -213,55 +195,19 @@ void CDeferredRendering::DrawPostProcessPass() {
 // On Lost Device
 void CDeferredRendering::Lost()
 {
-	if (shadowSurface[0])
-		shadowSurface[0]->Release();
-	if (shadow[0])
-		shadow[0]->Release();
-	shadow[0] = NULL;
-	if (shadowSurface[1])
-		shadowSurface[1]->Release();
-	if (shadow[1])
-		shadow[1]->Release();
-	shadow[1] = NULL;
-	if (shadowSurface[2])
-		shadowSurface[2]->Release();
-	if (shadow[2])
-		shadow[2]->Release();
-	shadow[2] = NULL;
-	if (shadowSurface[3])
-		shadowSurface[3]->Release();
-	if (shadow[3])
-		shadow[3]->Release();
-	shadow[3] = NULL;
-	if (gbSurface[0])
-		gbSurface[0]->Release();
-	if (gbuffer[0])
-		gbuffer[0]->Release();
-	gbuffer[0] = NULL;
-	if (gbSurface[1])
-		gbSurface[1]->Release();
-	if (gbuffer[1])
-		gbuffer[1]->Release();
-	gbuffer[1] = NULL;
-	if (gbSurface[2])
-		gbSurface[2]->Release();
-	if (gbuffer[2])
-		gbuffer[2]->Release();
-	gbuffer[2] = NULL;
-	if (lightingSurface)
-		lightingSurface->Release();
-	if (lightingTexture)
-		lightingTexture->Release();
-	lightingTexture = NULL;
-	//if (cubemap)
-	//   cubemap->Release();
-	//cubemap = NULL;
+	for(int i = 0;i<4;i++) {
+		SAFE_RELEASE(shadowSurface[i]);
+		SAFE_RELEASE(shadow[i]);
+	}
+	for(int i = 0;i<3;i++) {
+		SAFE_RELEASE(gbSurface[i]);
+		SAFE_RELEASE(gbuffer[i]);
+	}
+	SAFE_RELEASE(lightingSurface);
+	SAFE_RELEASE(lightingTexture);
 	for(int i = 0; i<ppTCcount;i++){
-		if (rsTmpSurface[i])
-			rsTmpSurface[i]->Release();
-		if (rtTmpSurface[i])
-			rtTmpSurface[i]->Release();
-		rtTmpSurface[i] = NULL;
+		SAFE_RELEASE(rsTmpSurface[i]);
+		SAFE_RELEASE(rtTmpSurface[i]);
 	}
 	if(m_pEffect)
 		m_pEffect->OnLostDevice();
@@ -272,7 +218,7 @@ void CDeferredRendering::Patch()
 {
 	CPatch::RedirectCall(0x53ECBD, Idle);
 	for(int i = 0; i<19; i++)
-		CPatch::RedirectCall(g_aAddLightCallTable[i], _AddLight);
+		CPatch::RedirectCall(g_aAddLightCallTable[i], AddNewLight);
 	CPatch::Nop(0x80E707, 1);
 	CPatch::RedirectCall(0x80E708, Im3D_DrawIndexedPrimitive);
 	CPatch::Nop(0x80E931, 1);
