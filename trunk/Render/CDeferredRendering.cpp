@@ -51,19 +51,20 @@ D3DXVECTOR3 m_vLightDirection;
 bool CDeferredRendering::Setup()
 {
 	ID3DXBuffer *errors;
+	HRESULT result;
 	m_vUpVector = new D3DXVECTOR3(0, 1, 0);
-	// Not working... idk why? maybe because san andreas not using it?
-	RwTextureSetAutoMipmapping(1);
 	// Loading shader... TODO: Load it from folder...
-	HRESULT result = D3DXCreateEffectFromFile(g_Device,"Deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
-	if(!CDebug::CheckForD3D9Errors(errors,"CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx",result))
-	{
+	result = D3DXCreateEffectFromFile(g_Device,"Deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	if(!CDebug::CheckForD3D9Errors(errors,"CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx",result))	{
 		return false;
 	}
-	// Loading textures... TODO: Add debugging
+
+	//------------Loading textures------------------------------------------
 	D3DXCreateTextureFromFile(g_Device,"noise.png",&noise);
 	D3DXCreateTextureFromFile(g_Device,"clouds.tga",&clouds);
 	D3DXCreateCubeTextureFromFile(g_Device,"grace_diffuse_cube.dds",&cubemap);
+	//----------------------------------------------------------------------
+
 	// Creating Post-Process stuff
 	m_pEffect->GetInt("PostProcessCount",&ppTCcount);
 	rtTmpSurface = (IDirect3DTexture9**)calloc(ppTCcount,sizeof(IDirect3DTexture9*));
