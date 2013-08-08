@@ -28,7 +28,7 @@ bool CPedsRender::Setup()
 	}
 	if(FAILED(result))
 	{
-		MessageBox(0, "CObjectRender::Setup: D3DXCreateEffectFromFile() - failed while compiling object.fx", 0, 0);
+		MessageBox(0, "CPedsRender::Setup: D3DXCreateEffectFromFile() - failed while compiling skin.fx", 0, 0);
 		return false;
 	}
 	return true;
