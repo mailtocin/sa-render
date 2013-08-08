@@ -54,6 +54,12 @@
     <ClCompile Include="CLights.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CSkyRender.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CImmediateRender.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CRender.h">
@@ -136,6 +142,12 @@
     </ClInclude>
     <ClInclude Include="D3D9Headers\d3dx9xof.h">
       <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="CSkyRender.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CImmediateRender.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

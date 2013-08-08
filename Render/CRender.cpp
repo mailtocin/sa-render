@@ -8,6 +8,9 @@
 #include "CObjectRender.h"
 #include "CPedsRender.h"
 #include "CPatch.h"
+#include "CImmediateRender.h"
+#include "CLights.h"
+#include "CSkyRender.h"
 #include "CGame.h"
 #pragma comment(lib, "D3DDeviceReset.lib")
 
@@ -33,6 +36,7 @@ void CRender::Setup()
 	CVehicleRender::Setup();
 	CObjectRender::Setup();
 	CPedsRender::Setup();
+	CSkyRender::Setup();
 }
 
 void CRender::DefineReset()

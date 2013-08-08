@@ -6,6 +6,7 @@
 #include "CObjectRender.h"
 #include "CPedsRender.h"
 #include "CLights.h"
+#include "CSkyRender.h"
 #include <stdio.h>
 #include <sstream>
 
@@ -36,8 +37,6 @@ D3DXMATRIX CDeferredRendering::g_mLightProj2;
 ID3DXEffect *CDeferredRendering::m_pEffect;
 // Noise texture for Post-Process
 IDirect3DTexture9 *noise;
-// Cloud texture for Sky
-IDirect3DTexture9 *clouds;
 // Cubemap for Reflections
 IDirect3DCubeTexture9 *CDeferredRendering::cubemap;
 // D3D parameters
@@ -61,7 +60,6 @@ bool CDeferredRendering::Setup()
 
 	//------------Loading textures------------------------------------------
 	D3DXCreateTextureFromFile(g_Device,"noise.png",&noise);
-	D3DXCreateTextureFromFile(g_Device,"clouds.tga",&clouds);
 	D3DXCreateCubeTextureFromFile(g_Device,"grace_diffuse_cube.dds",&cubemap);
 	//----------------------------------------------------------------------
 
@@ -382,58 +380,6 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,IDirec
 	g_Device->SetTransform(D3DTS_PROJECTION,&proj);
 }
 
-//------------------------------------------SkySphere Stuff------------------------------------------
-struct _VERTEX {
-	D3DXVECTOR3 pos;     // vertex position
-	D3DXVECTOR3 norm;    // vertex normal
-	float tu;            // texture coordinates
-	float tv;
-} VERTEX,*LPVERTEX;
-
-#define FVF_VERTEX    D3DFVF_XYZ|D3DFVF_NORMAL|D3DFVF_TEX1
-LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev,float fRad,UINT slices,UINT stacks) {
-	// create the sphere
-	LPD3DXMESH mesh;
-	if (FAILED(D3DXCreateSphere(pDev,fRad,slices,stacks,&mesh,NULL)))
-		return NULL;
-
-	// create a copy of the mesh with texture coordinates,
-	// since the D3DX function doesn't include them
-	LPD3DXMESH texMesh;
-	if (FAILED(mesh->CloneMeshFVF(D3DXMESH_SYSTEMMEM,FVF_VERTEX,pDev,&texMesh)))
-		// failed, return un-textured mesh
-			return mesh;
-
-	// finished with the original mesh, release it
-	mesh->Release();
-
-	// lock the vertex buffer
-	_VERTEX* pVerts = NULL;
-	if (SUCCEEDED(texMesh->LockVertexBuffer(0,(VOID **) &pVerts))) {
-
-		// get vertex count
-		int numVerts=texMesh->GetNumVertices();
-
-		// loop through the vertices
-		for (int i=0;i<numVerts;i++) {
-
-			// calculate texture coordinates
-			pVerts->tu=asinf(pVerts->norm.x)/D3DX_PI+0.5f;
-			pVerts->tv=asinf(pVerts->norm.y)/D3DX_PI+0.5f;
-
-			// go to next vertex
-			pVerts++;
-		}
-
-		// unlock the vertex buffer
-		texMesh->UnlockVertexBuffer();
-	}
-
-	// return pointer to caller
-	return texMesh;
-}
-//---------------------------------------------------------------------------------------------------
-
 // Deferred Lighting Optimizations
 RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX m_View,D3DXMATRIX m_Projection,float screenW,float screenH)
 {
@@ -598,10 +544,8 @@ void CDeferredRendering::Idle(void *a)
 			}
 		}
 		IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
-		LPD3DXMESH sphere = CreateMappedSphere(g_Device,1000,100,100);
-		D3DXMATRIX meshMat, meshRotate, meshTranslate,tmp,meshMatinv,view,proj,viewproj,invview,invproj,invviewproj;
+		D3DXMATRIX view,proj,viewproj,invview,invproj,invviewproj;
 		RwV3D sunpos,camPos;
-
 		GetSunPosn(&sunpos,1000);
 
 		FindPlayerCoors(&camPos, 0);
@@ -623,19 +567,13 @@ void CDeferredRendering::Idle(void *a)
 		D3DXMatrixInverse(&invproj,NULL,&proj);
 		D3DXMatrixMultiply(&viewproj,&view,&proj);
 		D3DXMatrixInverse(&invviewproj,NULL,&viewproj);
-
-		D3DXMatrixIdentity(&meshMat);
-		D3DXMatrixRotationY(&meshRotate, D3DXToRadian(0));
-		D3DXMatrixTranslation(&meshTranslate, camPos.x,camPos.y,camPos.z);
-		D3DXMatrixMultiply(&meshMat, &meshRotate, &meshTranslate);
-		D3DXMatrixMultiplyTranspose(&tmp, &meshMat, &viewproj);
+		CSkyRender::PreRender(new D3DXVECTOR3(camPos.x,camPos.y,camPos.z),&viewproj);
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
 		RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
 		CObjectRender::m_pEffect->SetTechnique("Deferred");
 		CVehicleRender::m_pEffect->SetTechnique("Deferred");
 		CPedsRender::m_pEffect->SetTechnique("Deferred");
-		RenderScene();
-		RenderPedWeapons();
+		
 		UINT passes;
 		D3DXCOLOR ambientColor,ambientColor2;
 		ambientColor.r = (float)Timecycle->m_fCurrentAmbientRed;
@@ -647,30 +585,21 @@ void CDeferredRendering::Idle(void *a)
 		ambientColor2.g = (float)Timecycle->m_fCurrentAmbientObjGreen;
 		ambientColor2.b = (float)Timecycle->m_fCurrentAmbientObjBlue;
 		ambientColor2.a = 1.0;
-		m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);
-
-		m_pEffect->SetVector("lightDirection",new D3DXVECTOR4(camPos.x+(sunpos.x),camPos.y+(sunpos.y),camPos.z+(sunpos.z),1));
-		m_pEffect->SetTexture("cloudTex",clouds);
+		m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);		
 		m_pEffect->SetVector("SunColor",new D3DXVECTOR4(Timecycle->m_nCurrentSunCoreRed/255.0f*(1-*_daylightLightingState),Timecycle->m_nCurrentSunCoreGreen/255.0f*(1-*_daylightLightingState),Timecycle->m_nCurrentSunCoreBlue/255.0f*(1-*_daylightLightingState),1));
-		m_pEffect->SetTechnique("sky");
-		m_pEffect->SetMatrix("gmWorldViewProj",&tmp);
 		m_pEffect->SetMatrix("gmViewProj",&viewproj);
 		m_pEffect->SetMatrix("gmProj",&proj);
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
 		m_pEffect->SetMatrix("gmView",&view);
 		m_pEffect->SetMatrix("gmInvProj",&invproj);
-		m_pEffect->SetMatrix("gmWorld",&meshMat);
 		m_pEffect->SetTexture("test",shadow[1]);
 		m_pEffect->SetTexture("test2",shadow[3]);
-		m_pEffect->Begin(&passes,0);
-		m_pEffect->BeginPass(0);
-		sphere->DrawSubset(0);
-		m_pEffect->EndPass();
-		m_pEffect->End();
+		CSkyRender::Render(new D3DXVECTOR4(camPos.x+(sunpos.x),camPos.y+(sunpos.y),camPos.z+(sunpos.z),1));
+		RenderScene();
+		RenderPedWeapons();
 		RwCameraEndUpdate(Scene->m_pRwCamera);
-
-		if (sphere) sphere->Release();
+		CSkyRender::Release();
 		DWORD dwOldFVF;
 		DWORD dwSBlend;
 		DWORD dwDBlend;
