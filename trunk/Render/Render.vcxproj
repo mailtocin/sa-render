@@ -124,6 +124,7 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="d3d9.lib" />
+    <Library Include="D3DDeviceReset.lib" />
     <Library Include="d3dx9.lib" />
     <Library Include="rtworld.lib" />
   </ItemGroup>
