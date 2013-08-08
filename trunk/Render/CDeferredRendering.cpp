@@ -174,7 +174,7 @@ void CDeferredRendering::Lost()
 }
 //----------------------------------------------------
 
-// Patch Function
+//----------------Patch Function----------------------
 void CDeferredRendering::Patch()
 {
 	CPatch::RedirectCall(0x53ECBD, Idle);
@@ -184,36 +184,36 @@ void CDeferredRendering::Patch()
 	CPatch::Nop(0x80E931, 1);
 	CPatch::RedirectCall(0x80E932, Im3D_DrawIndexedPrimitive);
 }
+//----------------------------------------------------
 
-// Post-Process loop
+//-----------------Post-Process loop------------------
 void CDeferredRendering::PostProcess(IDirect3DSurface9 *outSurf){
+	std::string result;
+	std::stringstream sstm;
 	if(ppTCcount>1){
 		for(int i = 0; i<ppTCcount-1;i++){
 			g_Device->SetRenderTarget(0,rsTmpSurface[i+1]);
-			std::stringstream sstm;
 			sstm << "PostProcess_" << i;
-			std::string result = sstm.str();
+			result = sstm.str();
 			m_pEffect->SetTechnique((char*)result.c_str());
 
-			std::stringstream sstm1;
-			sstm1 << "screenBuffer_" << i;
-			std::string result1 = sstm1.str();
-			m_pEffect->SetTexture((char*)result1.c_str(),rtTmpSurface[i]);
+			sstm << "screenBuffer_" << i;
+			result = sstm.str();
+			m_pEffect->SetTexture((char*)result.c_str(),rtTmpSurface[i]);
 			DrawPostProcessPass();
 		}
 	}
 	g_Device->SetRenderTarget(0,outSurf);
-	std::stringstream sstm;
 	sstm << "PostProcess_" << ppTCcount-1;
-	std::string result = sstm.str();
+	result = sstm.str();
 	m_pEffect->SetTechnique((char*)result.c_str());
-	std::stringstream sstm1;
-	sstm1 << "screenBuffer_" << ppTCcount-1;
 
-	std::string result1 = sstm1.str();
-	m_pEffect->SetTexture((char*)result1.c_str(),rtTmpSurface[ppTCcount-1]);
+	sstm << "screenBuffer_" << ppTCcount-1;
+	result = sstm.str();
+	m_pEffect->SetTexture((char*)result.c_str(),rtTmpSurface[ppTCcount-1]);
 	DrawPostProcessPass();
 }
+//----------------------------------------------------
 
 // Cubemap rendering.. TODO: Make it WORK!!!!1111
 void CDeferredRendering::DrawCubemap(){
@@ -223,7 +223,6 @@ void CDeferredRendering::DrawCubemap(){
 	}
 	IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
 	D3DXMATRIX tmpview;
-	IDirect3DSurface9* tmpsurf;
 	HRESULT hr;
 	D3DXMATRIX view,proj;
 	g_Device->GetTransform(D3DTS_VIEW,&view);
@@ -523,9 +522,6 @@ void CDeferredRendering::Idle(void *a)
 	HRESULT hr;
 	RwV2d mousePos;
 	D3DXVECTOR4 sun,cam;
-	float angle;
-	CVector axis_X, axis_Y;
-	RwMatrix ols;
 	do 
 	time = GetTimeFromRenderStart();
 	while(time / GetTimerDivider() - LastTickTime < 14);
@@ -543,7 +539,7 @@ void CDeferredRendering::Idle(void *a)
 	if(FrontEndMenuManager->m_bMenuActive || GetCameraScreenFadeStatus(TheCamera) == 2)
 	{
 		CalculateAspectRatio(); // CDraw::CalculateAspectRatio
-		CameraSize(Scene->m_pRwCamera, 0, tan(gfFOV * 0.0087266462), gfAspectRatio);
+		CameraSize(Scene->m_pRwCamera, 0, tan(gfFOV * 0.0087266462f), gfAspectRatio);
 		SetRenderWareCamera(Scene->m_pRwCamera); // CVisibilityPlugins::SetRenderWareCamera
 		RwCameraClear(Scene->m_pRwCamera, gColourTop, 2);
 		if(!RsCameraBeginUpdate(Scene->m_pRwCamera))
@@ -551,8 +547,8 @@ void CDeferredRendering::Idle(void *a)
 	}
 	else
 	{
-		mousePos.x = RsGlobal->MaximumWidth * 0.5;
-		mousePos.y = RsGlobal->MaximumHeight * 0.5;
+		mousePos.x = RsGlobal->MaximumWidth * 0.5f;
+		mousePos.y = RsGlobal->MaximumHeight * 0.5f;
 		RsMouseSetPos(&mousePos);
 		ConstructRendererRenderList(); // CRenderer::ConstructRenderList
 		PreRenderRenderer();           // CRenderer::PreRender
@@ -575,12 +571,12 @@ void CDeferredRendering::Idle(void *a)
 		Scene->m_pRwCamera->fogPlane = Timecycle->m_fCurrentFogStart;
 		//RenderMirrors();
 		RwCameraEndUpdate(Scene->m_pRwCamera);
-		CVehicleRender::m_pEffect->SetFloat("screenHeight",RsGlobal->MaximumHeight);
-		CVehicleRender::m_pEffect->SetFloat("screenWidth",RsGlobal->MaximumWidth);
-		CObjectRender::m_pEffect->SetFloat("screenHeight",RsGlobal->MaximumHeight);
-		CObjectRender::m_pEffect->SetFloat("screenWidth",RsGlobal->MaximumWidth);
-		CPedsRender::m_pEffect->SetFloat("screenHeight",RsGlobal->MaximumHeight);
-		CPedsRender::m_pEffect->SetFloat("screenWidth",RsGlobal->MaximumWidth);
+		CVehicleRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
+		CVehicleRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
+		CObjectRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
+		CObjectRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
+		CPedsRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
+		CPedsRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
 
 		if(!shadow[0]){
 			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_R5G6B5,D3DPOOL_DEFAULT,&shadow[0],NULL);
@@ -622,7 +618,6 @@ void CDeferredRendering::Idle(void *a)
 		RwV3D sunpos,camPos;
 
 		GetSunPosn(&sunpos,1000);
-		D3DVIEWPORT9 vp;
 
 		FindPlayerCoors(&camPos, 0);
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
@@ -701,7 +696,6 @@ void CDeferredRendering::Idle(void *a)
 		UINT dwSSSize;
 		const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
 		IDirect3DBaseTexture9* pOldTexture;
-		IDirect3DVertexDeclaration9* pOldVDecl;
 		hr = g_Device->BeginScene();
 		g_Device->GetTexture(0, &pOldTexture);
 		//g_Device->GetVertexDeclaration(&pOldVDecl);
@@ -713,7 +707,6 @@ void CDeferredRendering::Idle(void *a)
 		g_Device->GetStreamSource(0, &pSSData, &dwSSOffset, &dwSSSize);
 		//g_Device->StretchRect((*(IDirect3DSurface9**)0xC98090), NULL, gbSurface[0], NULL, D3DTEXF_POINT);
 		//pOldRTSurf->Release();
-		UINT pss;
 		g_Device->SetTexture(0, NULL);
 		g_Device->SetFVF(dwFVF_POST);
 		g_Device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
@@ -741,21 +734,21 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetTechnique("DefShadPL");
 		if(CLights::m_nNumLights > 0)
 		{
-		for(int l = 0; l < CLights::m_nNumLights; l++)
-		{
-		D3DXVECTOR3 pos;
-		RECT sr;
-		if(CLights::m_aLights[l].mode == LIGHT_MODE_POINT)
-		{
-			pos = D3DXVECTOR3(CLights::m_aLights[l].pos.x, CLights::m_aLights[l].pos.y, CLights::m_aLights[l].pos.z);
-			sr = DetermineClipRect(pos, CLights::m_aLights[l].radius, view, proj, 1024, 768);
-			m_pEffect->SetVector("sLP",new D3DXVECTOR4(CLights::m_aLights[l].pos.x,CLights::m_aLights[l].pos.y,CLights::m_aLights[l].pos.z,1));
-			m_pEffect->SetVector("PointLightColor",new D3DXVECTOR4(CLights::m_aLights[l].red,CLights::m_aLights[l].green,CLights::m_aLights[l].blue,1));
-			m_pEffect->SetFloat("PointLightRange",CLights::m_aLights[l].radius);
-			g_Device->SetScissorRect(&sr);
-			DrawPostProcessPass();
-		}
-		}
+			for(unsigned int l = 0; l < CLights::m_nNumLights; l++)
+			{
+				D3DXVECTOR3 pos;
+				RECT sr;
+				if(CLights::m_aLights[l].mode == LIGHT_MODE_POINT)
+				{
+					pos = D3DXVECTOR3(CLights::m_aLights[l].pos.x, CLights::m_aLights[l].pos.y, CLights::m_aLights[l].pos.z);
+					sr = DetermineClipRect(pos, CLights::m_aLights[l].radius, view, proj, 1024, 768);
+					m_pEffect->SetVector("sLP",new D3DXVECTOR4(CLights::m_aLights[l].pos.x,CLights::m_aLights[l].pos.y,CLights::m_aLights[l].pos.z,1));
+					m_pEffect->SetVector("PointLightColor",new D3DXVECTOR4(CLights::m_aLights[l].red,CLights::m_aLights[l].green,CLights::m_aLights[l].blue,1));
+					m_pEffect->SetFloat("PointLightRange",CLights::m_aLights[l].radius);
+					g_Device->SetScissorRect(&sr);
+					DrawPostProcessPass();
+				}
+			}
 		}
 		g_Device->SetRenderTarget(0,rsTmpSurface[0]);
 		m_pEffect->SetTexture("lightBuffer",lightingTexture);

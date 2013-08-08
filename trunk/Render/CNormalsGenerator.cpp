@@ -59,7 +59,6 @@ void CNormalsGenerator::SetGeometryUsageFlag(RpGeometry *geometry, unsigned int 
 RpGeometry *CNormalsGenerator::CreateGeometryCheckNormals(int numVerts, int numTriangles, unsigned int format)
 {
 	RpGeometry *geometry;
-	unsigned int usageFlags;
 #ifdef _RECALCULATE_NORMALS
 	format |= rpGEOMETRYNORMALS;
 	GenerateNormals = true;

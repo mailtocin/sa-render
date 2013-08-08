@@ -8,11 +8,11 @@
 #pragma once
 #include "RenderWare.h"
 
-// ћы используем код RenderWare дл€ генерации нормалей
+// Use RenderWare code for normals generation.
 //#define _RENDERWARE_NORMALS_GENERATION
-// ѕересчитать нормали дл€ моделей с нормал€ми
+// Reacalculating normals for models that have normals.
 #define _RECALCULATE_NORMALS
-// —гладить нормали, не работает с _RENDERWARE_NORMALS_GENERATION
+// Smooth normals, don't work with _RENDERWARE_NORMALS_GENERATION
 //#define _NORMALS_GENERATOR_SMOOTH_NORMALS
 
 #ifdef _RENDERWARE_NORMALS_GENERATION

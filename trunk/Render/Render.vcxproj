@@ -41,11 +41,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <TargetExt>.asi</TargetExt>
+    <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.asi</TargetExt>
-    <IncludePath>H:\Program Files\Microsoft DirectX SDK %28June 2010%29\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -102,6 +103,19 @@
     <ClInclude Include="CPedsRender.h" />
     <ClInclude Include="CRender.h" />
     <ClInclude Include="CLights.h" />
+    <ClInclude Include="D3D9Headers\d3d9.h" />
+    <ClInclude Include="D3D9Headers\d3d9caps.h" />
+    <ClInclude Include="D3D9Headers\d3d9types.h" />
+    <ClInclude Include="D3D9Headers\d3dx9.h" />
+    <ClInclude Include="D3D9Headers\d3dx9anim.h" />
+    <ClInclude Include="D3D9Headers\d3dx9core.h" />
+    <ClInclude Include="D3D9Headers\d3dx9effect.h" />
+    <ClInclude Include="D3D9Headers\d3dx9math.h" />
+    <ClInclude Include="D3D9Headers\d3dx9mesh.h" />
+    <ClInclude Include="D3D9Headers\d3dx9shader.h" />
+    <ClInclude Include="D3D9Headers\d3dx9shape.h" />
+    <ClInclude Include="D3D9Headers\d3dx9tex.h" />
+    <ClInclude Include="D3D9Headers\d3dx9xof.h" />
     <ClInclude Include="RenderWare.h" />
     <ClInclude Include="CTextureMaps.h" />
     <ClInclude Include="CVehicleRender.h" />
@@ -109,10 +123,8 @@
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\..\..\Program Files\Microsoft DirectX SDK (June 2010)\Lib\x86\d3d9.lib">
-      <FileType>Document</FileType>
-    </Library>
-    <Library Include="..\..\..\Program Files\Microsoft DirectX SDK (June 2010)\Lib\x86\d3dx9.lib" />
+    <Library Include="d3d9.lib" />
+    <Library Include="d3dx9.lib" />
     <Library Include="rtworld.lib" />
   </ItemGroup>
   <ItemGroup>
@@ -121,6 +133,9 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D3D9Headers\d3dx9math.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

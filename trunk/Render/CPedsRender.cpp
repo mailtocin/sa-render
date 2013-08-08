@@ -59,11 +59,7 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 	D3DXVECTOR4 sun;
 	D3DXVECTOR4 cam;
 	D3DXCOLOR ambientColor,ambientColor2;
-	RxD3D9ResEntryHeader *header;
-	RxD3D9InstanceData *mesh;
-	RpMaterial *mat;
 	IDirect3DBaseTexture9 *diffuse,*bump,*specular;
-	CVector camPos;
 	UINT passes;
 	D3DXMATRIX world;
 	D3DXMATRIX worldViewProj,lightProj,sunMatrix,vp,proj,worldtransp,lightView,view,wv;
