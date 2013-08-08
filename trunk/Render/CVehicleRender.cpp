@@ -1,5 +1,5 @@
 #include "CVehicleRender.h"
-#include "CDefferedRendering.h"
+#include "CDeferredRendering.h"
 #include "CTextureMaps.h"
 #include "CRender.h"
 #include "RenderWare.h"
@@ -180,10 +180,7 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 	sun.x += camPos.x;
 	sun.y += camPos.y;
 	sun.z += camPos.z;
-	D3DXMatrixMultiplyTranspose(&m_LightViewProj,&CDefferedRendering::g_mLightView[0],&CDefferedRendering::g_mLightProj);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
-	D3DXMatrixMultiply(&m_LightViewProj,&m_LightViewProj,&worldtransp);
-	m_pEffect->SetMatrix("gmLightViewProj",&m_LightViewProj);
 	m_pEffect->SetMatrix("gmWorld",&worldtransp);
 	m_pEffect->SetMatrix("gmWorldView",&wv);
 	m_pEffect->SetMatrix("gmViewInv",&viewinv);
@@ -201,7 +198,6 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 	memcpy(&cam, GetCamPos(), 12);
 	cam.w = 1.0;
 	m_pEffect->SetVector("gvEye", &cam);
-	m_pEffect->SetTexture("shadowTex",CDefferedRendering::shadow[1]);
 	mesh = &repEntry->meshData;
 	// Рендерим все меши
 	for(unsigned int i = 0; i < repEntry->header.numMeshes; i++)

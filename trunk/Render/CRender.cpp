@@ -4,7 +4,7 @@
 #include "CNormalsGenerator.h"
 #include "CTextureMaps.h"
 #include "CVehicleRender.h"
-#include "CDefferedRendering.h"
+#include "CDeferredRendering.h"
 #include "CObjectRender.h"
 #include "CPedsRender.h"
 #include "CPatch.h"
@@ -21,13 +21,13 @@ void CRender::Patch()
 	CTextureMaps::Patch();
 	CVehicleRender::Patch();
 	CObjectRender::Patch();
-	CDefferedRendering::Patch();
+	CDeferredRendering::Patch();
 	CPedsRender::Patch();
 }
 
 void CRender::Setup()
 {
-	CDefferedRendering::Setup();
+	CDeferredRendering::Setup();
 	CVehicleRender::Setup();
 	CObjectRender::Setup();
 	CPedsRender::Setup();
@@ -42,7 +42,7 @@ void CRender::DefineReset()
 void CRender::BeforeReset()
 {
 	CVehicleRender::Lost();
-	CDefferedRendering::Lost();
+	CDeferredRendering::Lost();
 	CObjectRender::Lost();
 	CPedsRender::Lost();
 }
@@ -50,7 +50,7 @@ void CRender::BeforeReset()
 void CRender::AfterReset()
 {
 	CVehicleRender::Reset();
-	CDefferedRendering::Reset();
+	CDeferredRendering::Reset();
 	CObjectRender::Reset();
 	CPedsRender::Reset();
 }

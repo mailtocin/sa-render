@@ -1,7 +1,7 @@
 #include "CPedsRender.h"
 #include "CVehicleRender.h"
 #include "CTextureMaps.h"
-#include "CDefferedRendering.h"
+#include "CDeferredRendering.h"
 #include "CRender.h"
 #include "RenderWare.h"
 #include "CPatch.h"
@@ -83,12 +83,7 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 	D3DXMatrixMultiply(&worldViewProj,&vp,&worldtransp);
 	GetSunPosn((CVector *)&sun);
 	sun.w = 1.0;
-	D3DXMatrixMultiplyTranspose(&m_LightViewProj,&CDefferedRendering::g_mLightView[0],&CDefferedRendering::g_mLightProj);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
-
-	D3DXMatrixMultiply(&m_LightViewProj,&m_LightViewProj,&worldtransp);
-
-	m_pEffect->SetMatrix("gmLightViewProj",&m_LightViewProj);
 	m_pEffect->SetMatrix("gmWorld",&world);
 	m_pEffect->SetMatrix("gmWorldView",&wv);
 	m_pEffect->SetVector("gvDirLight", &sun);
@@ -105,7 +100,6 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 	memcpy(&cam, GetCamPos(), 12);
 	cam.w = 1.0;
 	m_pEffect->SetVector("gvEye", &cam);
-	m_pEffect->SetTexture("shadowTex",CDefferedRendering::shadow[1]);
 	if (*rwD3D9LastPixelShaderUsed)
 	{
 		*rwD3D9LastPixelShaderUsed = NULL;
