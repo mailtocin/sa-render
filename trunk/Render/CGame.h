@@ -102,7 +102,8 @@
 #define RemoveCameraMirror(t) ((void (__thiscall *)(CCamera *))0x51A5A0)(t)
 #define FindPlayerCoors(outPoint, playerIndex) ((void (__cdecl *)(CVector *, int))0x56E010)(outPoint, playerIndex)
 
-
+// D3D Helpers
+#define SAFE_RELEASE(p) {if(p){(p)->Release();(p)=NULL;}}
 
 bool GetSunPosn(CVector *dst);
 bool GetSunPosn(CVector *dst, float farClip);

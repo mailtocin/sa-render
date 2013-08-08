@@ -1369,7 +1369,6 @@ struct RpSector
 {
     int type;
 };
-
 /****************************************Enumerations***************************************/
 // RwTextureCoordinateIndex
 enum RwTextureCoordinateIndex

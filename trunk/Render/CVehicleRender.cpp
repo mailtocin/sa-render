@@ -1,5 +1,4 @@
 #include "CVehicleRender.h"
-#include "CDeferredRendering.h"
 #include "CTextureMaps.h"
 #include "CRender.h"
 #include "RenderWare.h"
