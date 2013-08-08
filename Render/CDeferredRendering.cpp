@@ -53,8 +53,8 @@ bool CDeferredRendering::Setup()
 	HRESULT result;
 	m_vUpVector = new D3DXVECTOR3(0, 1, 0);
 	// Loading shader... TODO: Load it from folder...
-	result = D3DXCreateEffectFromFile(g_Device,"Deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
-	if(!CDebug::CheckForD3D9Errors(errors,"CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx",result))	{
+	result = D3DXCreateEffectFromFile(g_Device,"deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	if(!CDebug::CheckForD3D9Errors(errors,"CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling deferred.fx",result))	{
 		return false;
 	}
 
