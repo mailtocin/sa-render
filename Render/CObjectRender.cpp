@@ -166,7 +166,6 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	UINT passes;
 	D3DXMATRIX v,p,vp,worldTransposedMatrix,worldViewProj,world,wv;
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
-		RwTexture *texture = g_DefaultRender_Atomic->repEntry->meshData.material->texture;
 		device->GetTexture(0,&diffuse);
 		m_pEffect->SetTexture("gtDiffuse",diffuse);
 	}

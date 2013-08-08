@@ -61,10 +61,10 @@ CVector *GetCamPos()
 
 bool Im2DRenderQuad(float x1, float y1, float x2, float y2, float z, float recipCamZ, float uvOffset, unsigned int color)
 {
-  double uvOffsetB;
+  float uvOffsetB;
   RwD3D9Vertex vertices[4];
 
-  uvOffsetB = uvOffset + 1.0;
+  uvOffsetB = uvOffset + 1.0f;
   vertices[0].x = x1;
   vertices[0].y = y1;
   vertices[0].z = z;

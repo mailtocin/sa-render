@@ -57,16 +57,16 @@ void CRender::AfterReset()
 
 D3DXMATRIX *__cdecl CRender::_getComposedMatrix(D3DXMATRIX *m_out)
 {
-	D3DXMATRIX *viewproj; // eax@1
+	D3DXMATRIX viewproj; // eax@1
 	D3DXMATRIX *result; // eax@4
 	D3DXMATRIX view,proj;
 	g_Device->GetTransform(D3DTS_VIEW,&view);
 	g_Device->GetTransform(D3DTS_PROJECTION,&proj);
-	D3DXMatrixMultiply(viewproj,&view,&proj);
+	D3DXMatrixMultiply(&viewproj,&view,&proj);
 	if ( D3D9ActiveTransform )
-		result = D3DXMatrixMultiplyTranspose(m_out, D3D9Transform, viewproj);
+		result = D3DXMatrixMultiplyTranspose(m_out, D3D9Transform, &viewproj);
 	else
-		result = D3DXMatrixTranspose(m_out, viewproj);
+		result = D3DXMatrixTranspose(m_out, &viewproj);
 
 	return result;
 }

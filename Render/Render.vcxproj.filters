@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\D3D9Headers">
+      <UniqueIdentifier>{b110512e-8596-4c45-9c87-3a51fe48e901}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DllMain.cpp">
@@ -95,16 +98,60 @@
     <ClInclude Include="CLights.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="D3D9Headers\d3d9.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3d9caps.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3d9types.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9anim.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9core.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9effect.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9math.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9mesh.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9shader.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9shape.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9tex.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D9Headers\d3dx9xof.h">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Library Include="rtworld.lib">
       <Filter>Resource Files</Filter>
     </Library>
-    <Library Include="..\..\..\Program Files\Microsoft DirectX SDK (June 2010)\Lib\x86\d3d9.lib">
+    <Library Include="d3d9.lib">
       <Filter>Resource Files</Filter>
     </Library>
-    <Library Include="..\..\..\Program Files\Microsoft DirectX SDK (June 2010)\Lib\x86\d3dx9.lib">
+    <Library Include="d3dx9.lib">
       <Filter>Resource Files</Filter>
     </Library>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D3D9Headers\d3dx9math.inl">
+      <Filter>Header Files\D3D9Headers</Filter>
+    </None>
   </ItemGroup>
 </Project>
