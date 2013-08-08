@@ -5,7 +5,7 @@ FILE *CDebug::m_pVertexDeclarationFile;
 
 void CDebug::Initialize()
 {
-	// Opening/creating all needed files here!
+// Opening/creating all needed files here!
 #if defined(DEBUG_ENABLED)
 
     #if defined(DEBUG_VERTEX_DECLARATION)
@@ -17,7 +17,7 @@ void CDebug::Initialize()
 
 void CDebug::Shutdown()
 {
-	// Closing all files - here!
+// Closing all files - here!
 #if defined(DEBUG_ENABLED)
 
     #if defined(DEBUG_VERTEX_DECLARATION)
