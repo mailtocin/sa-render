@@ -1,0 +1,119 @@
+/*
+    SA::Render source file
+    CVehicleBase structure
+*/
+#pragma once
+#include "CPhysicalBase.h"
+#include "CVehicleAudio.h"
+#include "CHandlingVehicle.h"
+#include "CCarCtrl.h"
+//#include "CPed.h"
+//#include "CAutomobile.h"
+#include "CStoredCollPoly.h"
+//#include "CVehicle.h"
+
+#pragma pack(push, 1)
+struct CVehicleBase
+{
+    CPhysicalBase physical;
+    CVehicleAudio vehicleAudio;
+    CHandlingVehicle *pVehicleHandling;
+    int pPlaneHandling;
+    int dwHandlingFlags;
+    CCarCtrl carCtrl;
+    char flags;
+    char vehicleModeFlag;
+    char field_42A;
+    char field_42B;
+    char field_42C;
+    char field_42D;
+    char field_42E;
+    char field_42F;
+    int field_430;
+    char primaryColor;
+    char secondaryColor;
+    char tertiaryColor;
+    char quaternaryColor;
+    char extraA;
+    char extraB;
+    short upgrades[15];
+    float wheelSize;
+    short alarm;
+    short field_45E;
+    void *driver;
+    void *passenger[8];
+    short numPassengers;
+    char field_486;
+    char field_487;
+    char maxPassengers;
+    char gap_485[1];
+    char field_48A;
+    char specialColModelID;
+    int lastBuildingCollidedWheel;
+    int pFire;
+    float fSteerAngle1;
+    int fSteerAngle2;
+    float gasPedal;
+    float breakPedal;
+    char m_cReference;
+    char gap_4A1[1];
+    short field_4A6;
+    char flags2;
+    char field_4A9;
+    char field_4AA;
+    char gap_4A7[1];
+    char field_4AC;
+    char gap_4A9[3];
+    float dirtLevel;
+    int currentGear;
+    int field_4B8;
+    int field_4BC;
+    float fHealth;
+    void *trailer;
+    int tractor;
+    int field_4CC;
+    int someTime;
+    int timeLastShot;
+    int field_4D8;
+    short field_4DC;
+    short field_4DE;
+    void *field_4E0;
+    int field_4E4;
+    int field_4E8;
+    char field_4EC;
+    char gap_4E9[11];
+    int doorStatus;
+    int field_4FC;
+    int field_500;
+    int field_504;
+    char damageType;
+    char gap_505[3];
+    int damagingEntity;
+    char gap_50C[1];
+    char field_511;
+    char field_512;
+    char field_513;
+    int field_514;
+    char _f518;
+    char _f519;
+    char _f520;
+    char _f521;
+    CStoredCollPoly frontCollPoly;
+    CStoredCollPoly rearCollPoly;
+    char flWheelColBrightness;
+    char rlWheelColBrightness;
+    char frWheelColBrightness;
+    char rrWheelColBrightness;
+    int pOverheatParticle;
+    int pFireParticle;
+    int pDustParticle;
+    int dwRenderLights;
+    int LicensePlateTexture;
+    struct CVehicle *pSomeVehicle;
+    int vehicleClass;
+    int vehicleSubClass;
+    short previousPaintjobTxdID;
+    short paintJobTxdID;
+    int paintJobTexture;
+};
+#pragma pack(pop)
