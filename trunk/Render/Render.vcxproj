@@ -80,7 +80,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CDebug.cpp" />
-    <ClCompile Include="CDefferedRendering.cpp" />
+    <ClCompile Include="CDeferredRendering.cpp" />
     <ClCompile Include="CGame.cpp" />
     <ClCompile Include="CNormalsGenerator.cpp" />
     <ClCompile Include="CObjectRender.cpp" />
@@ -93,7 +93,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CDebug.h" />
-    <ClInclude Include="CDefferedRendering.h" />
+    <ClInclude Include="CDeferredRendering.h" />
     <ClInclude Include="CGame.h" />
     <ClInclude Include="CNormalsGenerator.h" />
     <ClInclude Include="CObjectRender.h" />
