@@ -5,7 +5,7 @@ FILE *CDebug::m_pVertexDeclarationFile;
 
 void CDebug::Initialize()
 {
-	// Открытие/создание всех файлов
+	// Opening/creating all needed files here!
 #if defined(DEBUG_ENABLED)
 
     #if defined(DEBUG_VERTEX_DECLARATION)
@@ -17,7 +17,7 @@ void CDebug::Initialize()
 
 void CDebug::Shutdown()
 {
-	// Закрытие всех файлов
+	// Closing all files - here!
 #if defined(DEBUG_ENABLED)
 
     #if defined(DEBUG_VERTEX_DECLARATION)
@@ -27,6 +27,7 @@ void CDebug::Shutdown()
 #endif
 }
 
+// The func gets desription of vertex declaration and stores it to sa_render_DebugVD.txt file.
 void CDebug::StoreVertexDeclaration(IDirect3DVertexDeclaration9 *declaration)
 {
 #if defined(DEBUG_ENABLED) && defined(DEBUG_VERTEX_DECLARATION)
