@@ -93,19 +93,6 @@ bool CDeferredRendering::Setup()
 	return true;
 }
 
-// Im3d Draw Function
-HRESULT __fastcall Im3D_DrawIndexedPrimitive(int ecx0,
-											 int edx0,
-											 IDirect3DDevice9 *device,
-											 D3DPRIMITIVETYPE Type,
-											 INT BaseVertexIndex,
-											 UINT MinIndex,
-											 UINT NumVertices,
-											 UINT StartIndex,
-											 UINT PrimitiveCount)
-{
-	return TRUE;
-}
 // On Reset Device
 void CDeferredRendering::Reset()
 {
@@ -178,11 +165,6 @@ void CDeferredRendering::Lost()
 void CDeferredRendering::Patch()
 {
 	CPatch::RedirectCall(0x53ECBD, Idle);
-	CLights::Patch();
-	CPatch::Nop(0x80E707, 1);
-	CPatch::RedirectCall(0x80E708, Im3D_DrawIndexedPrimitive);
-	CPatch::Nop(0x80E931, 1);
-	CPatch::RedirectCall(0x80E932, Im3D_DrawIndexedPrimitive);
 }
 //----------------------------------------------------
 
@@ -285,7 +267,7 @@ void CDeferredRendering::DrawCubemap(){
 		CObjectRender::m_pEffect->SetTechnique("Shadow");
 		CVehicleRender::m_pEffect->SetTechnique("Shadow");
 		CPedsRender::m_pEffect->SetTechnique("Shadow");
-		_RenderScene();
+		RenderScene();
 		RenderPedWeapons();
 		RwCameraEndUpdate(Scene->m_pRwCamera);
 	}
@@ -385,7 +367,7 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,IDirec
 	g_Device->SetTransform(D3DTS_VIEW,lightview);
 	g_Device->SetTransform(D3DTS_PROJECTION,lightproj);
 	//g_Device->SetViewport(&newViewport);
-	_RenderScene();
+	RenderScene();
 	RenderPedWeapons();
 	RwCameraEndUpdate(Scene->m_pRwCamera);
 	hr = g_Device->BeginScene();
@@ -652,7 +634,7 @@ void CDeferredRendering::Idle(void *a)
 		CObjectRender::m_pEffect->SetTechnique("Deferred");
 		CVehicleRender::m_pEffect->SetTechnique("Deferred");
 		CPedsRender::m_pEffect->SetTechnique("Deferred");
-		_RenderScene();
+		RenderScene();
 		RenderPedWeapons();
 		UINT passes;
 		D3DXCOLOR ambientColor,ambientColor2;
@@ -800,4 +782,68 @@ void CDeferredRendering::Idle(void *a)
 	FlushObrsPrintfs();
 	RwCameraEndUpdate(Scene->m_pRwCamera);
 	RsCameraShowRaster(Scene->m_pRwCamera);
+}
+
+void CDeferredRendering::RenderScene()
+{
+	double camZ, nearClip;
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATETEXTURERASTER, NULL);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, FALSE);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, FALSE);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, FALSE);
+	if(!gOcclReflectionsState)
+	{
+		DoRWRenderHorizon();
+		RenderClouds(); // CClouds::Render
+	}
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void *)TRUE);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void *)TRUE);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESHADEMODE, (void *)rwSHADEMODEGOURAUD);
+	UpdateSunLightForCustomRenderingPipeline();
+	RenderRoads();                      // CRenderer::RenderRoads
+	RenderCoronasReflections();         // CCoronas::RenderReflections
+	RenderEverythingBarRoads();         // CRenderer::RenderEverythingBarRoads
+	RenderBrokenObjects(byte_BB4240, 0);
+	RenderFadingInUnderwaterEntities(); // CRenderer::RenderFadingInUnderwaterEntities
+	if(gCameraSeaDepth <= 0.0)
+	{
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLNONE);
+		RenderWater(); //CWaterLevel::RenderWater
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLBACK);
+	}
+	RenderFadingInEntities(); // CRenderer::RenderFadingInEntities
+	if(!gMirrorsRenderingState)
+	{
+		if(TheCamera->Cams[TheCamera->ActiveCam].Front.z <= 0.0)
+			camZ = -TheCamera->Cams[TheCamera->ActiveCam].Front.z;
+		else
+			camZ = 0.0;
+		nearClip = ((flt_8CD4F0 * flt_8CD4EC * 0.25 - flt_8CD4F0 * flt_8CD4EC) * camZ + flt_8CD4F0 * flt_8CD4EC) * (Scene->m_pRwCamera->farPlane -
+			Scene->m_pRwCamera->nearPlane);
+		RwCameraEndUpdate(Scene->m_pRwCamera);
+		RwCameraSetNearClipPlane(Scene->m_pRwCamera, nearClip + Scene->m_pRwCamera->nearPlane);
+		RwCameraBeginUpdate(Scene->m_pRwCamera);
+		sub_707F40();
+		RenderStaticShadows(); // CShadows::RenderStaticShadows
+		RenderStoredShadows(); // CShadows::RenderStoredShadows
+		RwCameraEndUpdate(Scene->m_pRwCamera);
+		RwCameraSetNearClipPlane(Scene->m_pRwCamera, Scene->m_pRwCamera->nearPlane);
+		RwCameraBeginUpdate(Scene->m_pRwCamera);
+	}
+	RenderBrokenObjects(byte_BB4240, 1);
+	RenderGrass(); // CGrass::Render
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLNONE);
+	if(!gOcclReflectionsState)
+	{
+		sub_7154B0();
+		RenderRainStreaks();   // CWeather::RenderRainStreaks
+		RenderSunReflection(); // CCoronas::RenderSunReflection
+	}
+	if(gCameraSeaDepth > 0.0)
+	{
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLNONE);
+		RenderWater(); // CWaterLevel::RenderWater
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLBACK);
+	}
+	RenderStencil();
 }
