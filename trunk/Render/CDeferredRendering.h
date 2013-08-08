@@ -9,7 +9,9 @@ public:
 	static void Reset();
 	static void Lost();
 	static void Patch();
+	// TODO: Move it to CGame module
 	static void Idle(void *);
+	static void RenderScene();
 	static void DrawPostProcessPass();
 	static void PostProcess(IDirect3DSurface9 *outSurf);
 	static void CreateShadowCamera();
