@@ -8,26 +8,40 @@
 #include <stdio.h>
 #include <sstream>
 #define SAFE_RELEASE(p) {if(p){(p)->Release();(p)=NULL;}}
+// Shadows textures/surfaces
 IDirect3DTexture9 *CDefferedRendering::shadow[4];
 IDirect3DSurface9 *CDefferedRendering::shadowSurface[4];
+// Geometry Buffer textures/surfaces
 IDirect3DTexture9 *CDefferedRendering::gbuffer[3];
 IDirect3DSurface9 *CDefferedRendering::gbSurface[3];
+// Temporary Post-Processing textures/surfaces
 IDirect3DTexture9 **CDefferedRendering::rtTmpSurface;
 IDirect3DSurface9 **CDefferedRendering::rsTmpSurface;
+// Lighting Buffer textures/surfaces
 IDirect3DTexture9 *CDefferedRendering::lightingTexture;
 IDirect3DSurface9 *CDefferedRendering::lightingSurface;
+// Day/Night state
 float* _daylightLightingState = (float*)0x8D12C0;
+// Post-Process textures/surfaces count
 int CDefferedRendering::ppTCcount;
+// Post-Process textures/surfaces width/height
 int *CDefferedRendering::surfWidth;
 int *CDefferedRendering::surfHeight;
+// Shadow View/Projection Matrix
 D3DXMATRIX CDefferedRendering::g_mLightView[2];
 D3DXMATRIX CDefferedRendering::g_mLightProj;
 D3DXMATRIX CDefferedRendering::g_mLightProj2;
+// Deferred/Post-Process Shader
 ID3DXEffect *CDefferedRendering::m_pEffect;
+// Noise texture for Post-Process
 IDirect3DTexture9 *noise;
+// Cloud texture for Sky
 IDirect3DTexture9 *clouds;
+// Cubemap for Reflections
 IDirect3DCubeTexture9 *CDefferedRendering::cubemap;
+// D3D parameters
 D3DPRESENT_PARAMETERS *g_D3Dpp = (D3DPRESENT_PARAMETERS *) 0xC9C040;
+// Shadow (maybe unused) stuff
 const int CONST_SPLIT_COUNT = 4;
 float m_fLightFarPlanes[];
 float m_fExtraDistance;
@@ -43,12 +57,16 @@ D3DXMATRIX m_maLightViewProjection[CONST_SPLIT_COUNT];
 D3DXVECTOR3 m_vLightDirection;
 bool CDefferedRendering::m_baSplitColorChannels[4][4];
 
+// Setup function
 bool CDefferedRendering::Setup()
 {
 		ID3DXBuffer *errors;
-        m_vUpVector = new D3DXVECTOR3(0, 1, 0);
+    m_vUpVector = new D3DXVECTOR3(0, 1, 0);
+    // Not working... idk why? maybe because san andreas not using it?
 		RwTextureSetAutoMipmapping(1);
+    // Loading shader... TODO: Load it from folder...
 		HRESULT result = D3DXCreateEffectFromFile(g_Device,"deffered.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+    // Loading textures... TODO: Add debugging
 		D3DXCreateTextureFromFile(g_Device,"noise.png",&noise);
 		D3DXCreateTextureFromFile(g_Device,"clouds.tga",&clouds);
 		D3DXCreateCubeTextureFromFile(g_Device,"grace_diffuse_cube.dds",&cubemap);
@@ -62,6 +80,7 @@ bool CDefferedRendering::Setup()
 				MessageBox(0, "CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx", 0, 0);
 				return false;
 		}
+    // Creating Post-Process stuff
 		m_pEffect->GetInt("PostProcessCount",&ppTCcount);
 		rtTmpSurface = (IDirect3DTexture9**)calloc(ppTCcount,sizeof(IDirect3DTexture9*));
 		rsTmpSurface = (IDirect3DSurface9**)calloc(ppTCcount,sizeof(IDirect3DSurface9*));
@@ -83,23 +102,25 @@ bool CDefferedRendering::Setup()
 		m_pEffect->GetInt(m_pEffect->GetAnnotation((char*)result1.c_str(),1),&surfHeight[0]);
 		return true;
 }
+// Light Struct... TODO: Move it to RenderWare.h
 struct CLight{
  RwV3D pos, dir;
  float radius, red, green, blue;
  BYTE type; /*
-              0  Обычный      Источник света использует позицию и радиус
-              1  Направлённый Источник света использует позицию и радиус, используется направление
-              2  Тень         Используется чёрный цвет
-              4  Глобальный   Источник света использует только позицию
+              0  Omni/Point   Using position and radius.
+              1  Directional  Using position, radius and direction.
+              2  Shadow?      It's black!
+              4  Global       Using only position.
      */
  BYTE subType; /*
-      0 Обычный
-      1 Свет передних фар автомобиля
-      2 Свет задних фар автомобиля
-      3 Свет индикатора
+      0 Default.
+      1 Car headlights.
+      2 Car backlights.
+      3 Car LED?
       */
  BYTE fogType, generateShadows;
 };
+//-------------------------------------Light stuff------------------------------------------------
 int g_iNumNewLights;
 CLight g_aNewLights[50];
 DWORD g_aAddLightCallTable[] = { 0x47B0D8, 0x48ED76, 0x49DF47, 0x53632D,
@@ -138,6 +159,8 @@ void _AddLight(char type, float x, float y, float z, float x_dir, float y_dir, f
   g_iNumNewLights++;
  }
 }
+//------------------------------------------------------------------------------------------------
+// Im3d Draw Function
 HRESULT __fastcall Im3D_DrawIndexedPrimitive(int ecx0,
                                  int edx0,
          IDirect3DDevice9 *device,
@@ -150,14 +173,16 @@ HRESULT __fastcall Im3D_DrawIndexedPrimitive(int ecx0,
 {
 		return TRUE;
 }
+// On Reset Device
 void CDefferedRendering::Reset()
 {
 		if(m_pEffect)
 				m_pEffect->OnResetDevice();
 }
-
+// Vertex Declaration for Full-Screen Quad
 IDirect3DVertexDeclaration9*  VertDecl = NULL;
 
+// Full-Screen Quad Drawing Function... TODO: Move it to somewhere...
 void DrawFullScreenQuad(IDirect3DDevice9* pd3dDevice) {
   struct Vertex {
     D3DXVECTOR2 pos;
@@ -184,6 +209,7 @@ void DrawFullScreenQuad(IDirect3DDevice9* pd3dDevice) {
   SAFE_RELEASE(VertDecl);
 }
 
+// Post-Process Drawing Pass.... TODO: idk what to do with it... maybe make passes count in value?
 void CDefferedRendering::DrawPostProcessPass() {
 		UINT pPasses;
 		m_pEffect->Begin(&pPasses,0);
@@ -193,6 +219,7 @@ void CDefferedRendering::DrawPostProcessPass() {
 		m_pEffect->End();
 }
 
+// On Lost Device
 void CDefferedRendering::Lost()
 {
 	if (shadowSurface[0])
@@ -248,6 +275,8 @@ void CDefferedRendering::Lost()
 	if(m_pEffect)
 		m_pEffect->OnLostDevice();
 }
+
+// Patch Function
 void CDefferedRendering::Patch()
 {
 	CPatch::RedirectCall(0x53ECBD, Idle);
@@ -259,6 +288,7 @@ void CDefferedRendering::Patch()
 	CPatch::RedirectCall(0x80E932, Im3D_DrawIndexedPrimitive);
 }
 
+// Post-Process loop
 void CDefferedRendering::PostProcess(IDirect3DSurface9 *outSurf){
 	if(ppTCcount>1){
 		for(int i = 0; i<ppTCcount-1;i++){
@@ -287,6 +317,8 @@ void CDefferedRendering::PostProcess(IDirect3DSurface9 *outSurf){
 	m_pEffect->SetTexture((char*)result1.c_str(),rtTmpSurface[ppTCcount-1]);
 	DrawPostProcessPass();
 }
+
+// Cubemap rendering.. TODO: Make it WORK!!!!1111
 void CDefferedRendering::DrawCubemap(){
 	RwCameraEndUpdate(Scene->m_pRwCamera);
 	if(!cubemap){
@@ -369,6 +401,8 @@ void CDefferedRendering::DrawCubemap(){
 	g_Device->SetTransform(D3DTS_VIEW,&view);
 	g_Device->SetTransform(D3DTS_PROJECTION,&proj);
 }
+
+// Shadow Mapping Function
 void CDefferedRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,IDirect3DSurface9*shadowSurfaceC,float distance,D3DXMATRIX*lightview,D3DXMATRIX*lightproj,float dd)
 {
 	RwCameraEndUpdate(Scene->m_pRwCamera);
@@ -467,6 +501,7 @@ void CDefferedRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,IDirec
 	g_Device->SetTransform(D3DTS_PROJECTION,&proj);
 }
 
+//------------------------------------------SkySphere Stuff------------------------------------------
 struct _VERTEX {
     D3DXVECTOR3 pos;     // vertex position
     D3DXVECTOR3 norm;    // vertex normal
@@ -516,7 +551,9 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev,float fRad,UINT slices,UINT
     // return pointer to caller
     return texMesh;
 }
+//---------------------------------------------------------------------------------------------------
 
+// Deferred Lighting Optimizations
 RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX m_View,D3DXMATRIX m_Projection,float screenW,float screenH)
 {
 	//compute 3D bounding box of light in world space
@@ -582,6 +619,7 @@ RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX
 	return bbox2D;
 }
 
+//Idle function
 void CDefferedRendering::Idle(void *a)
 {
 	unsigned int time;
