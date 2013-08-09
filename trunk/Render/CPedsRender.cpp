@@ -56,6 +56,12 @@ void rwD3D9VSGetInverseWorldMatrix(void *inverseWorldMatrix) {
 HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9ResEntryHeader *resEntry, RxD3D9InstanceData *instData)
 {
 	D3DXVECTOR4 sun;
+	DWORD oDB,oSB,oBO,oAB,oAT;
+	g_Device->GetRenderState(D3DRS_DESTBLEND,&oDB);
+	g_Device->GetRenderState(D3DRS_SRCBLEND,&oSB);
+	g_Device->GetRenderState(D3DRS_BLENDOP,&oBO);
+	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
+	g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
 	D3DXVECTOR4 cam;
 	D3DXCOLOR ambientColor,ambientColor2;
 	IDirect3DBaseTexture9 *diffuse,*bump,*specular;
@@ -144,8 +150,6 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 		rwD3D9RenderStateFlushCache();
 		m_pEffect->Begin(&passes,0);
 		m_pEffect->BeginPass(0);
-		g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-		g_Device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
 		result = g_Device->DrawIndexedPrimitive((D3DPRIMITIVETYPE)resEntry->primType, instData->baseIndex, 0, instData->numVertices, instData->startIndex, instData->numPrimitives);
 		m_pEffect->EndPass();
 		m_pEffect->End();
@@ -155,5 +159,10 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 		rwD3D9RenderStateFlushCache();
 		result = g_Device->DrawPrimitive((D3DPRIMITIVETYPE)resEntry->primType, instData->baseIndex, instData->numPrimitives);
 	}
+	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
+	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
+	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
+	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
+	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
 	return result;
 }
