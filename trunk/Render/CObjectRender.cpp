@@ -6,15 +6,6 @@
 #include "CPatch.h"
 #include "D3D9Headers\d3d9.h"
 #include "CGame.h"
-#include <windows.h>
-#include <stdio.h>
-#include <math.h>
-#include <stdio.h>
-#include <algorithm>
-#include <list>
-#include <map>
-#include <string>
-#include <vector>
 #include "CDebug.h"
 
 ID3DXEffect *CObjectRender::m_pEffect;
@@ -47,9 +38,7 @@ bool CObjectRender::Setup()
 {
 	ID3DXBuffer *errors;
 	HRESULT result = D3DXCreateEffectFromFile(g_Device,"object.fx", 0, 0, 0, 0, &m_pEffect, &errors);
-	if(!CDebug::CheckForD3D9Errors(errors,
-		"CObjectRender::Setup: D3DXCreateEffectFromFile() - failed while compiling object.fx",
-		result))
+	if(!CDebug::CheckForShaderErrors(errors, "CObjectRender", "object", result))
 	{
 		return false;
 	}
@@ -99,11 +88,7 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	D3DXCOLOR ambientColor,ambientColor2;
 	UINT passes;
 	D3DXMATRIX v,p,vp,worldTransposedMatrix,worldViewProj,world,wv;
-	device->GetRenderState(D3DRS_DESTBLEND,&oDB);
-	device->GetRenderState(D3DRS_SRCBLEND,&oSB);
-	device->GetRenderState(D3DRS_BLENDOP,&oBO);
-	device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
-	device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
+	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		device->GetTexture(0,&diffuse);
 		m_pEffect->SetTexture("gtDiffuse",diffuse);
@@ -156,11 +141,7 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	device->SetRenderState(D3DRS_DESTBLEND,oDB);
-	device->SetRenderState(D3DRS_SRCBLEND,oSB);
-	device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
-	device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
-	return device->SetRenderState(D3DRS_BLENDOP,oBO);
+	return SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }
 HRESULT __fastcall CObjectRender::DefaultRender_DrawPrimitiveB(int ecx0,
                                  int edx0,
@@ -198,11 +179,7 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	D3DXCOLOR ambientColor,ambientColor2;
 	UINT passes;
 	D3DXMATRIX v,p,vp,worldTransposedMatrix,worldViewProj,world,wv;
-	device->GetRenderState(D3DRS_DESTBLEND,&oDB);
-	device->GetRenderState(D3DRS_SRCBLEND,&oSB);
-	device->GetRenderState(D3DRS_BLENDOP,&oBO);
-	device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
-	device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
+	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		RwTexture *texture = g_DefaultRender_Atomic->repEntry->meshData.material->texture;
 		device->GetTexture(0,&diffuse);
@@ -256,11 +233,7 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	device->SetRenderState(D3DRS_DESTBLEND,oDB);
-	device->SetRenderState(D3DRS_SRCBLEND,oSB);
-	device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
-	device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
-	return device->SetRenderState(D3DRS_BLENDOP,oBO);
+	return SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }
 
 void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, unsigned __int8 type, char flags)
@@ -277,11 +250,7 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 	UINT passes;
 	D3DXMATRIX world;
 	D3DXMATRIX worldViewProj,lightProj,sunMatrix,vp,proj,worldtransp,lightView,wv;
-	g_Device->GetRenderState(D3DRS_DESTBLEND,&oDB);
-	g_Device->GetRenderState(D3DRS_SRCBLEND,&oSB);
-	g_Device->GetRenderState(D3DRS_BLENDOP,&oBO);
-	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
-	g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
+	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	rwD3D9EnableClippingIfNeeded(object, type);
 	rwD3D9SetRenderState(60, 0xFF000000u); // ?
 	header = &repEntry->header;
@@ -388,13 +357,5 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 		m_pEffect->End();
 		++mesh;
 	}
-	//rwD3D9SetTextureStageState(1,1,1);
-	//rwD3D9SetTextureStageState(1,4,1);
-	//rwD3D9SetTextureStageState(1,11,1);
-	//rwD3D9SetTextureStageState(1,24,0);
-	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
-	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
-	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
-	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
-	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
+	SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }

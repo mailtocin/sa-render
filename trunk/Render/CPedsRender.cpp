@@ -4,6 +4,7 @@
 #include "CRender.h"
 #include "RenderWare.h"
 #include "CPatch.h"
+#include "CDebug.h"
 #include <d3d9.h>
 #include "CGame.h"
 
@@ -21,14 +22,8 @@ bool CPedsRender::Setup()
 {
 	ID3DXBuffer *errors;
 	HRESULT result = D3DXCreateEffectFromFile(g_Device,"skin.fx", 0, 0, 0, 0, &m_pEffect, &errors);
-	if(errors)
+	if(!CDebug::CheckForShaderErrors(errors, "CPedsRender", "skin", result))
 	{
-		MessageBox(0, (char *)errors->GetBufferPointer(), 0, 0);
-		errors->Release();
-	}
-	if(FAILED(result))
-	{
-		MessageBox(0, "CPedsRender::Setup: D3DXCreateEffectFromFile() - failed while compiling skin.fx", 0, 0);
 		return false;
 	}
 	return true;

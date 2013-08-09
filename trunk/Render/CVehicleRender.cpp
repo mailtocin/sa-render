@@ -3,17 +3,9 @@
 #include "CRender.h"
 #include "RenderWare.h"
 #include "CPatch.h"
+#include "CDebug.h"
 #include "D3D9Headers\d3d9.h"
 #include "CGame.h"
-#include <windows.h>
-#include <stdio.h>
-#include <math.h>
-#include <stdio.h>
-#include <algorithm>
-#include <list>
-#include <map>
-#include <string>
-#include <vector>
 
 ID3DXEffect *CVehicleRender::m_pEffect;
 D3DXMATRIX CVehicleRender::m_LightViewProj;
@@ -31,12 +23,7 @@ bool CVehicleRender::Setup()
 	HRESULT result = D3DXCreateEffectFromFile(g_Device,"vehicle.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	D3DXCreateTextureFromFile(g_Device,"normal.tga",&defnormal);
 	D3DXCreateTextureFromFile(g_Device,"spec.tga",&defspec);
-	if(errors)
-	{
-		MessageBox(0, (char *)errors->GetBufferPointer(), 0, 0);
-		errors->Release();
-	}
-	if(FAILED(result))
+	if(!CDebug::CheckForShaderErrors(errors, "CVehicleRender", "vechicle", result))
 	{
 		MessageBox(0, "CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx", 0, 0);
 		return false;
@@ -74,11 +61,7 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 	D3DXMATRIX world;
 	D3DXMATRIX worldViewProj,lightProj,sunMatrix,lightView,vp,proj,worldtransp,viewinv,view,wv,wvi;
 	IDirect3DBaseTexture9 *diffuse,*bump,*specular;
-	g_Device->GetRenderState(D3DRS_DESTBLEND,&oDB);
-	g_Device->GetRenderState(D3DRS_SRCBLEND,&oSB);
-	g_Device->GetRenderState(D3DRS_BLENDOP,&oBO);
-	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
-	g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
+	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	RpGeometry *geometry = atomic->geometry;
 	unsigned int geometryFlags = geometry->flags;
 	rwD3D9EnableClippingIfNeeded(atomic, type);
@@ -196,9 +179,5 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 		m_pEffect->End();
 		mesh++;
 	}
-	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
-	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
-	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
-	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
-	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
+	SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }
