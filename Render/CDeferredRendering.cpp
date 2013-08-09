@@ -51,12 +51,10 @@ bool CDeferredRendering::Setup()
 {
 	ID3DXBuffer *errors;
 	HRESULT result;
-	m_vUpVector = new D3DXVECTOR3(0, 1, 0);
+	m_vUpVector = &D3DXVECTOR3(0, 1, 0);
 	// Loading shader... TODO: Load it from folder...
 	result = D3DXCreateEffectFromFile(g_Device,"deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
-	if(!CDebug::CheckForD3D9Errors(errors,
-		"CDeferredRendering::Setup: D3DXCreateEffectFromFile() - failed while compiling deferred.fx",
-		result))	{
+	if(!CDebug::CheckForShaderErrors(errors, "CDeferredRendering", "deferred", result))	{
 		return false;
 	}
 
@@ -74,6 +72,8 @@ bool CDeferredRendering::Setup()
 	surfWidth = (int*)calloc(ppTCcount,sizeof(int));
 	surfHeight = (int*)calloc(ppTCcount,sizeof(int));
 	// 3) We need to set sizes of textures
+	m_pEffect->SetInt("ScreenSizeX",RsGlobal->MaximumWidth);
+	m_pEffect->SetInt("ScreenSizeY",RsGlobal->MaximumHeight);
 	if(ppTCcount>1){
 		for(int i = 0; i<ppTCcount;i++){
 			std::stringstream sstm1;
@@ -208,7 +208,6 @@ void CDeferredRendering::DrawCubemap(){
 									&cubemap,NULL);
 	}
 	IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
-	HRESULT hr;
 	D3DXMATRIX view,proj;
 	g_Device->GetTransform(D3DTS_VIEW,&view);
 	g_Device->GetTransform(D3DTS_PROJECTION, &proj);
@@ -320,9 +319,9 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 		for (k = 0; k < 3; k++)
 		{
 			fDistance = D3DXVec3Dot(&vaAxis[k], 
-				new D3DXVECTOR3( Scene->m_pRwCamera->frustumCorners[i].x,
-								 Scene->m_pRwCamera->frustumCorners[i].y,
-								 Scene->m_pRwCamera->frustumCorners[i].z));
+				&D3DXVECTOR3( Scene->m_pRwCamera->frustumCorners[i].x,
+							  Scene->m_pRwCamera->frustumCorners[i].y,
+							  Scene->m_pRwCamera->frustumCorners[i].z));
 
 			if (fDistance < faNear[k])
 				faNear[k] = fDistance;
@@ -349,11 +348,11 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	SAFE_RELEASE(pOldRTSurf);
 	SAFE_RELEASE(m_pZBuffer);
 	// 4) We need to compute all needed matrix's.
-	D3DXMatrixLookAtLH(lightview,new D3DXVECTOR3(camPos.x+(sunpos.x),
-												 camPos.y+(sunpos.y),
-												 camPos.z+(sunpos.z)),
-								 new D3DXVECTOR3(camPos.x,camPos.y,camPos.z),
-								 new D3DXVECTOR3(0,1,0));
+	D3DXMatrixLookAtLH(lightview,&D3DXVECTOR3(camPos.x+(sunpos.x),
+											  camPos.y+(sunpos.y),
+											  camPos.z+(sunpos.z)),
+								 &D3DXVECTOR3(camPos.x,camPos.y,camPos.z),
+								 &D3DXVECTOR3(0,1,0));
 	D3DXMatrixOrthoLH(lightproj,faDiff[0]/dd, faDiff[1]/dd, -ZNear, fLightZFar);
 	// 5) We need to render scene from light position.
 	RwCameraBeginUpdate(Scene->m_pRwCamera);
@@ -378,19 +377,24 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	g_Device->SetTransform(D3DTS_VIEW,&view);
 	g_Device->SetTransform(D3DTS_PROJECTION,&proj);
 }
-//------------------------------------------------------------------------
+//----------------------------------------------------------------------
 
-//Idle function
+//-----------------------------Idle function-----------------------------
 void CDeferredRendering::Idle(void *a)
 {
+//----------------------------Values------------------------------------
 	unsigned int time;
 	RwV2d mousePos;
 	D3DXVECTOR4 sun,cam;
+//----------------------------------------------------------------------
+//----------------------------Time Update-------------------------------
 	do 
 	time = GetTimeFromRenderStart();
 	while(time / GetTimerDivider() - LastTickTime < 14);
 	LastTickTime = GetTimeFromRenderStart() / GetTimerDivider();
 	UpdateTimer();           // CTimer::Update
+//----------------------------------------------------------------------
+//----------------------------Init Functions-----------------------------
 	InitSprite2dPerFrame();  // CSprite2d::InitPerFrame
 	NumPointLights = 0;      // CPointLights::NumLights
 	CLights::m_nNumLights = 0;
@@ -398,6 +402,8 @@ void CDeferredRendering::Idle(void *a)
 	ProcessGame();           // CGame::Process
 	ServiceDMAudio(DMAudio); // cDMAudio::Service
 	SetLightsWithTimeOfDayColour(Scene->m_pRpWorld);
+//----------------------------------------------------------------------
+//----------------------------Main Loop---------------------------------
 	if(!a)
 		return;
 	if(FrontEndMenuManager->m_bMenuActive || GetCameraScreenFadeStatus(TheCamera) == 2)
@@ -418,7 +424,6 @@ void CDeferredRendering::Idle(void *a)
 		PreRenderRenderer();           // CRenderer::PreRender
 		ProcessPedTasks();
 		CreateShadowManagerShadows(ShadowManager); // CShadowManager::CreateShadows
-		//RenderSceneGeometryToMirror();
 		if(LightningFlash) // CWeather::LightningFlash
 		{
 			Timecycle->m_nCurrentSkyBottomRed = 255;
@@ -435,6 +440,7 @@ void CDeferredRendering::Idle(void *a)
 		Scene->m_pRwCamera->fogPlane = Timecycle->m_fCurrentFogStart;
 		//RenderMirrors();
 		RwCameraEndUpdate(Scene->m_pRwCamera);
+//---------------------------Initialization------------------------------
 		CVehicleRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CVehicleRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
 		CObjectRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
@@ -474,7 +480,7 @@ void CDeferredRendering::Idle(void *a)
 			}
 		}
 		IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
-		D3DXMATRIX view,proj,viewproj,invview,invproj,invviewproj;
+		D3DXMATRIX view,proj,viewproj,invview,invviewproj;
 		RwV3D sunpos,camPos;
 		GetSunPosn(&sunpos,1000);
 
@@ -485,14 +491,15 @@ void CDeferredRendering::Idle(void *a)
 		//DrawCubemap();
 		RwCameraEndUpdate(Scene->m_pRwCamera);
 		g_Device->GetTransform(D3DTS_VIEW,&view);
-		D3DXMatrixInverse(&invview,NULL,&view);
 		g_Device->GetTransform(D3DTS_PROJECTION,&proj);
-		D3DXMatrixInverse(&invproj,NULL,&proj);
+		D3DXMatrixInverse(&invview,NULL,&view);
 		D3DXMatrixMultiply(&viewproj,&view,&proj);
 		D3DXMatrixInverse(&invviewproj,NULL,&viewproj);
-		CSkyRender::PreRender(new D3DXVECTOR3(camPos.x,camPos.y,camPos.z),&viewproj);
+		cam = D3DXVECTOR4(camPos.x,camPos.y,camPos.z,1);
+		CSkyRender::PreRender(&cam,&viewproj);
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
-
+//----------------------------------------------------------------------
+//-------------------Render into geometry buffer-------------------------
 		g_Device->GetRenderTarget(0, &pOldRTSurf);
 		pOldRTSurf->Release();
 		g_Device->SetRenderTarget(0,gbSurface[0]);
@@ -502,7 +509,6 @@ void CDeferredRendering::Idle(void *a)
 		CObjectRender::m_pEffect->SetTechnique("Deferred");
 		CVehicleRender::m_pEffect->SetTechnique("Deferred");
 		CPedsRender::m_pEffect->SetTechnique("Deferred");
-		
 		D3DXCOLOR ambientColor,ambientColor2;
 		ambientColor.r = (float)Timecycle->m_fCurrentAmbientRed;
 		ambientColor.g = (float)Timecycle->m_fCurrentAmbientGreen;
@@ -514,35 +520,23 @@ void CDeferredRendering::Idle(void *a)
 		ambientColor2.b = (float)Timecycle->m_fCurrentAmbientObjBlue;
 		ambientColor2.a = 1.0;
 		m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);		
-		m_pEffect->SetVector("SunColor",new D3DXVECTOR4(Timecycle->m_nCurrentSunCoreRed/255.0f*(1-*_daylightLightingState),Timecycle->m_nCurrentSunCoreGreen/255.0f*(1-*_daylightLightingState),Timecycle->m_nCurrentSunCoreBlue/255.0f*(1-*_daylightLightingState),1));
 		m_pEffect->SetMatrix("gmViewProj",&viewproj);
-		m_pEffect->SetMatrix("gmProj",&proj);
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
-		m_pEffect->SetMatrix("gmView",&view);
-		m_pEffect->SetMatrix("gmInvProj",&invproj);
-		m_pEffect->SetTexture("test",shadow[1]);
-		m_pEffect->SetTexture("test2",shadow[3]);
-		CSkyRender::Render(new D3DXVECTOR4(camPos.x+(sunpos.x),camPos.y+(sunpos.y),camPos.z+(sunpos.z),1));
+		sun = D3DXVECTOR4(camPos.x+(sunpos.x),camPos.y+(sunpos.y),camPos.z+(sunpos.z),1);
+		CSkyRender::Render(&sun);
 		RenderScene();
 		RenderPedWeapons();
-
 		RwCameraEndUpdate(Scene->m_pRwCamera);
+//----------------------------------------------------------------------
 		CSkyRender::Release();
 		DWORD dwOldFVF;
-		DWORD dwSBlend;
-		DWORD dwDBlend;
-		DWORD dwBlendOp;
-		DWORD dwCull;
+		DWORD oDB,oSB,oBO,oAB,oAT;
 		const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
-
-		//g_Device->GetVertexDeclaration(&pOldVDecl);
+//-------------------Render Deferred Lighting----------------------------
 		g_Device->GetFVF(&dwOldFVF);
-		g_Device->GetRenderState(D3DRS_SRCBLEND, &dwSBlend);
-		g_Device->GetRenderState(D3DRS_DESTBLEND, &dwDBlend);
-		g_Device->GetRenderState(D3DRS_BLENDOP, &dwBlendOp);
-		g_Device->GetRenderState(D3DRS_CULLMODE, &dwCull);
+		GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 		g_Device->SetFVF(dwFVF_POST);
 		m_pEffect->SetTechnique("DefShad");
 		D3DXMATRIX m_LightViewProj[2];
@@ -552,15 +546,18 @@ void CDeferredRendering::Idle(void *a)
 		D3DXMatrixMultiplyTranspose(&m_LightViewProj[0],&g_mLightView[0],&g_mLightProj);
 		D3DXMatrixMultiplyTranspose(&m_LightViewProj[1],&g_mLightView[1],&g_mLightProj2);
 		m_pEffect->SetMatrixArray("gmLightViewProj",m_LightViewProj,2);
-
+		// Set Textures
 		m_pEffect->SetTexture("colorBuffer",gbuffer[0]);
 		m_pEffect->SetTexture("normalSpecBuffer",gbuffer[1]);
 		m_pEffect->SetTexture("shadowDepthBuffer",gbuffer[2]);
-		cam = *(D3DXVECTOR4*)GetCamPos();
 		m_pEffect->SetTexture("noise",noise);
 		m_pEffect->SetTexture("cubemap",cubemap);
-		m_pEffect->SetVector("vDir",new D3DXVECTOR4(cam.x-camPos.x,cam.y-camPos.y,cam.z-camPos.z,1));
-		m_pEffect->SetVector("sLP",new D3DXVECTOR4(sunpos.x+camPos.x,sunpos.y+camPos.y,sunpos.z+camPos.z,1));
+		m_pEffect->SetTexture("test",shadow[1]);
+		m_pEffect->SetTexture("test2",shadow[3]);
+		// ------------
+		cam = *(D3DXVECTOR4*)GetCamPos();
+		m_pEffect->SetVector("vDir",&D3DXVECTOR4(cam.x-camPos.x,cam.y-camPos.y,cam.z-camPos.z,1));
+		m_pEffect->SetVector("sLP",&D3DXVECTOR4(sunpos.x+camPos.x,sunpos.y+camPos.y,sunpos.z+camPos.z,1));
 		DrawPostProcessPass();
 		m_pEffect->SetTechnique("DefShadPL");
 		if(CLights::m_nNumLights > 0)
@@ -573,38 +570,36 @@ void CDeferredRendering::Idle(void *a)
 				{
 					pos = D3DXVECTOR3(CLights::m_aLights[l].pos.x, CLights::m_aLights[l].pos.y, CLights::m_aLights[l].pos.z);
 					sr = DetermineClipRect(pos, CLights::m_aLights[l].radius, view, proj, 1024, 768);
-					m_pEffect->SetVector("sLP",new D3DXVECTOR4(CLights::m_aLights[l].pos.x,CLights::m_aLights[l].pos.y,CLights::m_aLights[l].pos.z,1));
-					m_pEffect->SetVector("PointLightColor",new D3DXVECTOR4(CLights::m_aLights[l].red,CLights::m_aLights[l].green,CLights::m_aLights[l].blue,1));
+					m_pEffect->SetVector("sLP",&D3DXVECTOR4(CLights::m_aLights[l].pos.x,CLights::m_aLights[l].pos.y,CLights::m_aLights[l].pos.z,1));
+					m_pEffect->SetVector("PointLightColor",&D3DXVECTOR4(CLights::m_aLights[l].red,CLights::m_aLights[l].green,CLights::m_aLights[l].blue,1));
 					m_pEffect->SetFloat("PointLightRange",CLights::m_aLights[l].radius);
 					g_Device->SetScissorRect(&sr);
 					DrawPostProcessPass();
 				}
 			}
 		}
+//----------------------------------------------------------------------
+//-----------Post-Processing and Alpha-Blended Stuff---------------------
 		g_Device->SetRenderTarget(0,rsTmpSurface[0]);
 		m_pEffect->SetTexture("lightBuffer",lightingTexture);
 		m_pEffect->SetTechnique("DefShadL");
 		DrawPostProcessPass();
-
-
 		PostProcess(pOldRTSurf);
-		//g_Device->SetVertexDeclaration(pOldVDecl);
-		//if (pOldVDecl) pOldVDecl->Release();
 		g_Device->SetFVF(dwOldFVF);
-		g_Device->SetRenderState(D3DRS_SRCBLEND, dwSBlend);
-		g_Device->SetRenderState(D3DRS_DESTBLEND, dwDBlend);
-		g_Device->SetRenderState(D3DRS_BLENDOP, dwBlendOp);
-		g_Device->SetRenderState(D3DRS_CULLMODE, dwCull);
-		//RenderEffects();
+		SetOldStates(oDB,oSB,oBO,oAB,oAT);
+		RenderEffects();
 		//sub_53E8D0(g_Unk);
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )
 			SetCameraMotionBlurAlpha(TheCamera, 150); // CCamera::SetMotionBlurAlpha
 		RenderCameraMotionBlur(TheCamera);            // CCamera::RenderMotionBlur
 		Render2dStuff();
+//----------------------------------------------------------------------
 	}
+//----------------------------------------------------------------------
 	if(FrontEndMenuManager->m_bMenuActive)
 		DrawMenuManagerFrontEnd(FrontEndMenuManager); // CMenuManager::DrawFrontEnd
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATETEXTURERASTER, 0);
+//---------------------------Text---------------------------------------
 	DoFade();
 	DrawStyledText();
 	DrawMessages(0); // CMessages::Display
@@ -621,9 +616,11 @@ void CDeferredRendering::Idle(void *a)
 	}
 	DebugDisplayTextBuffer(); // CDebug::DebugDisplayTextBuffer
 	FlushObrsPrintfs();
+//----------------------------------------------------------------------
 	RwCameraEndUpdate(Scene->m_pRwCamera);
 	RsCameraShowRaster(Scene->m_pRwCamera);
 }
+//----------------------------------------------------------------------
 
 void CDeferredRendering::RenderScene()
 {

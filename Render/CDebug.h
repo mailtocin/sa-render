@@ -14,7 +14,7 @@ public:
 	static void Initialize();
 	static void Shutdown();
 	static void StoreVertexDeclaration(IDirect3DVertexDeclaration9 *declaration);
-	static bool CheckForD3D9Errors(ID3DXBuffer *declaration, LPCSTR message, HRESULT result);
+	static bool CheckForShaderErrors(ID3DXBuffer* errors, char *className, char *shaderName, HRESULT result);
 };
 
 // Vertex declaration stuff

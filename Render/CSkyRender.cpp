@@ -12,7 +12,7 @@ bool CSkyRender::Setup()
 {
 	ID3DXBuffer *errors;
 	HRESULT result = D3DXCreateEffectFromFile(g_Device,"sky.fx", 0, 0, 0, 0, &m_pEffect, &errors);
-	if(!CDebug::CheckForD3D9Errors(errors,"CSkyRender::Setup: D3DXCreateEffectFromFile() - failed while compiling sky.fx",result))
+	if(!CDebug::CheckForShaderErrors(errors,"CSkyRender","sky.fx",result))
 	{
 		return false;
 	}
@@ -53,7 +53,7 @@ bool CSkyRender::CreateSkySphere(float fRad,UINT slices,UINT stacks) {
 	}
 	return true;
 }
-void CSkyRender::PreRender(D3DXVECTOR3 *pos,D3DXMATRIX *viewproj)
+void CSkyRender::PreRender(D3DXVECTOR4 *pos,D3DXMATRIX *viewproj)
 {
 	CreateSkySphere(1000,100,100);
 	D3DXMATRIX meshRotate, meshTranslate;

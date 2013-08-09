@@ -15,7 +15,8 @@ void CDebug::Initialize()
 #endif
 }
 
-bool CDebug::CheckForD3D9Errors(ID3DXBuffer* errors, LPCSTR message, HRESULT result){
+bool CDebug::CheckForShaderErrors(ID3DXBuffer* errors, char *className, char *shaderName, HRESULT result){
+	char message[128];
 	if(errors)
 	{
 		MessageBox(0, (char *)errors->GetBufferPointer(), 0, 0);
@@ -23,7 +24,11 @@ bool CDebug::CheckForD3D9Errors(ID3DXBuffer* errors, LPCSTR message, HRESULT res
 	}
 	if(FAILED(result))
 	{
-		MessageBox(0, "CVehicleRender::Setup: D3DXCreateEffectFromFile() - failed while compiling vechicle.fx", 0, 0);
+		strcpy(message, className);
+		strcat(message, "::Setup : D3DXCreateEffectFromFile() - failed while compiling ");
+		strcat(message, shaderName);
+		strcat(message, ".fx");
+		MessageBox(0, message, 0, 0);
 		return false;
 	}
 	return true;
