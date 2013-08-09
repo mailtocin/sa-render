@@ -1,9 +1,9 @@
 texture2D colorBuffer;
 texture2D lightBuffer;
 texture2D screenBuffer_0 < int width = 1024; int height = 768; >;
-texture2D screenBuffer_1 < int width = 128; int height = 128; >;
-texture2D screenBuffer_2 < int width = 128; int height = 128; >;
-texture2D screenBuffer_3 < int width = 128; int height = 128; >;
+texture2D screenBuffer_1 < int width = 512; int height = 512; >;
+texture2D screenBuffer_2 < int width = 512; int height = 512; >;
+texture2D screenBuffer_3 < int width = 512; int height = 512; >;
 texture2D screenBuffer_4 < int width = 1024; int height = 768; >;
 texture2D screenBuffer_5 < int width = 256; int height = 256; >;
 texture2D screenBuffer_6 < int width = 256; int height = 256; >;
