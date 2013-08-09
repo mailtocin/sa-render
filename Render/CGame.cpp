@@ -125,3 +125,68 @@ D3DXMATRIX *getWorldViewProj(D3DXMATRIX *out, RwMatrix *world, D3DXMATRIX *viewP
    D3DXMatrixMultiply(out,viewProj,&worldtransp);
  return out;
 }
+// Deferred Lighting Optimizations
+RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX m_View,D3DXMATRIX m_Projection,float screenW,float screenH)
+{
+	//compute 3D bounding box of light in world space
+	D3DXVECTOR3 bbox3D[8];
+	bbox3D[0].x = position.x - range;  bbox3D[0].y = position.y + range;  bbox3D[0].z = position.z - range;
+	bbox3D[1].x = position.x + range;  bbox3D[1].y = position.y + range;  bbox3D[1].z = position.z - range;
+	bbox3D[2].x = position.x - range;  bbox3D[2].y = position.y - range;  bbox3D[2].z = position.z - range;
+	bbox3D[3].x = position.x + range;  bbox3D[3].y = position.y - range;  bbox3D[3].z = position.z - range;
+	bbox3D[4].x = position.x - range;  bbox3D[4].y = position.y + range;  bbox3D[4].z = position.z + range;
+	bbox3D[5].x = position.x + range;  bbox3D[5].y = position.y + range;  bbox3D[5].z = position.z + range;
+	bbox3D[6].x = position.x - range;  bbox3D[6].y = position.y - range;  bbox3D[6].z = position.z + range;
+	bbox3D[7].x = position.x + range;  bbox3D[7].y = position.y - range;  bbox3D[7].z = position.z + range;
+
+	//project coordinates
+	D3DXMATRIX viewProjMat = m_View * m_Projection;
+	D3DXVECTOR2 projBox[8];
+	for (int i = 0; i < 8; ++i)
+	{
+		D3DXVECTOR4 projPoint;
+		D3DXVec3Transform(&projPoint, &bbox3D[i], &viewProjMat);
+		projBox[i].x = projPoint.x / projPoint.w;  
+		projBox[i].y = projPoint.y / projPoint.w;
+
+		//clip to extents
+		if (projBox[i].x < -1.0f)
+			projBox[i].x = -1.0f;
+		else if (projBox[i].x > 1.0f)
+			projBox[i].x = 1.0f;
+		if (projBox[i].y < -1.0f)
+			projBox[i].y = -1.0f;
+		else if (projBox[i].y > 1.0f)
+			projBox[i].y = 1.0f;
+
+		//go to pixel coordinates
+		projBox[i].x = ((projBox[i].x + 1.0f) / 2.0f) * screenW;
+		projBox[i].y = ((-projBox[i].y + 1.0f) / 2.0f) * screenH;
+	}
+
+	//compute 2D bounding box of projected coordinates
+	unsigned int minX = 0xFFFFFFFF;
+	unsigned int maxX = 0x00000000;
+	unsigned int minY = 0xFFFFFFFF;
+	unsigned int maxY = 0x00000000;
+	for (int i = 0; i < 8; ++i)
+	{
+		unsigned int x = static_cast<unsigned int>(projBox[i].x);
+		unsigned int y = static_cast<unsigned int>(projBox[i].y);
+		if (x < minX)
+			minX = x;
+		if (x > maxX)
+			maxX = x;
+		if (y < minY)
+			minY = y;
+		if (y > maxY)
+			maxY = y;
+	}
+	RECT bbox2D;
+	bbox2D.top    = minY;
+	bbox2D.bottom = maxY;
+	bbox2D.left   = minX;
+	bbox2D.right  = maxX;
+
+	return bbox2D;
+}

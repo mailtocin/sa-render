@@ -65,6 +65,12 @@ void CSkyRender::PreRender(D3DXVECTOR3 *pos,D3DXMATRIX *viewproj)
 void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 {
 	UINT passes;
+	DWORD oDB,oSB,oBO,oAB,oAT;
+	g_Device->GetRenderState(D3DRS_DESTBLEND,&oDB);
+	g_Device->GetRenderState(D3DRS_SRCBLEND,&oSB);
+	g_Device->GetRenderState(D3DRS_BLENDOP,&oBO);
+	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
+	g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
 	m_pEffect->SetTechnique("Sky");
 	m_pEffect->SetTexture("cloudTex",CloudTex);
 	m_pEffect->SetVector("lightDirection",lightDirection);
@@ -75,6 +81,11 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 	skySphere->DrawSubset(0);
 	m_pEffect->EndPass();
 	m_pEffect->End();
+	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
+	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
+	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
+	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
+	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
 }
 void CSkyRender::Release()
 {

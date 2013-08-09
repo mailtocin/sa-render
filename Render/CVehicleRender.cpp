@@ -61,73 +61,10 @@ void CVehicleRender::Lost()
 		m_pEffect->OnLostDevice();
 }
 
-bool FlipTangents(IDirect3DVertexBuffer9 *buffer, UINT ReadSize,UINT ReadOffsetStart,UINT startIndex, UINT numIndices, UINT tangentOffset){
-		IDirect3DIndexBuffer9 *pIndexData;
-		std::vector < UCHAR > sourceArray;
-		sourceArray.resize ( ReadSize );
-		UCHAR* pSourceArrayBytes = &sourceArray[0];
-		{
-				void* pVertexBytesPT = NULL;
-				if ( FAILED( buffer->Lock ( ReadOffsetStart, ReadSize, &pVertexBytesPT, D3DLOCK_NOSYSLOCK ) ) )
-						return false;
-				memcpy ( pSourceArrayBytes, pVertexBytesPT, ReadSize );
-				buffer->Unlock ();
-		}
-		if ( FAILED( g_Device->GetIndices( &pIndexData ) ) )
-            return false;
-
-		// Get index buffer data
-        std::vector < UCHAR > indexArray;
-        indexArray.resize ( ReadSize );
-        UCHAR* pIndexArrayBytes = &indexArray[0];
-        {
-            void* pIndexBytes = NULL;
-            if ( FAILED( pIndexData->Lock ( startIndex*2, numIndices*2, &pIndexBytes, D3DLOCK_NOSYSLOCK | D3DLOCK_READONLY ) ) )
-                return false;
-            memcpy ( pIndexArrayBytes, pIndexBytes, numIndices*2 );
-            pIndexData->Unlock ();
-        }
-		for ( UINT i = 0 ; i < numIndices - 2 ; i += 3 )
-        {
-            // Get triangle vertex indici
-            WORD v0 = ((WORD*)pIndexArrayBytes)[ i ];
-            WORD v1 = ((WORD*)pIndexArrayBytes)[ i + 1 ];
-			WORD v2 = ((WORD*)pIndexArrayBytes)[ i + 2 ];
-			// Get vertex positions from original stream
-            CVector* pTan0 = (CVector*)( pSourceArrayBytes + v0 * tangentOffset );
-            CVector* pTan1 = (CVector*)( pSourceArrayBytes + v1 * tangentOffset );
-            CVector* pTan2 = (CVector*)( pSourceArrayBytes + v2 * tangentOffset );
-			CVector* pNorm0 = (CVector*)( pSourceArrayBytes + v0 * 12 );
-            CVector* pNorm1 = (CVector*)( pSourceArrayBytes + v1 * 12 );
-            CVector* pNorm2 = (CVector*)( pSourceArrayBytes + v2 * 12 );
-			if ( ( i & 1 ) ){
-					(*pTan0).x = -(*pTan0).x;
-					(*pTan0).y = -(*pTan0).y;
-					(*pTan0).z = -(*pTan0).z;
-					(*pTan1).x = -(*pTan1).x;
-					(*pTan1).y = -(*pTan1).y;
-					(*pTan1).z = -(*pTan1).z;
-					(*pTan2).x = -(*pTan2).x;
-					(*pTan2).y = -(*pTan2).y;
-					(*pTan2).z = -(*pTan2).z;
-
-					(*pNorm0).x = -(*pNorm0).x;
-					(*pNorm0).y = -(*pNorm0).y;
-					(*pNorm0).z = -(*pNorm0).z;
-					(*pNorm1).x = -(*pNorm1).x;
-					(*pNorm1).y = -(*pNorm1).y;
-					(*pNorm1).z = -(*pNorm1).z;
-					(*pNorm2).x = -(*pNorm2).x;
-					(*pNorm2).y = -(*pNorm2).y;
-					(*pNorm2).z = -(*pNorm2).z;
-			}
-		}
-		return true;
-}
-
 void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned char type, char flags)
 {
 	D3DXVECTOR4 sun;
+	DWORD oDB,oSB,oBO,oAB,oAT;
 	D3DXVECTOR4 cam;
 	D3DXCOLOR ambientColor,ambientColor2;
 	D3DXCOLOR vehicleColor;
@@ -137,6 +74,11 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 	D3DXMATRIX world;
 	D3DXMATRIX worldViewProj,lightProj,sunMatrix,lightView,vp,proj,worldtransp,viewinv,view,wv,wvi;
 	IDirect3DBaseTexture9 *diffuse,*bump,*specular;
+	g_Device->GetRenderState(D3DRS_DESTBLEND,&oDB);
+	g_Device->GetRenderState(D3DRS_SRCBLEND,&oSB);
+	g_Device->GetRenderState(D3DRS_BLENDOP,&oBO);
+	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
+	g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
 	RpGeometry *geometry = atomic->geometry;
 	unsigned int geometryFlags = geometry->flags;
 	rwD3D9EnableClippingIfNeeded(atomic, type);
@@ -245,8 +187,6 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 		if(repEntry->header.indexBuffer)
 		{
 			m_pEffect->BeginPass(0);
-			g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-			g_Device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
 			rwD3D9DrawIndexedPrimitive(repEntry->header.primType, mesh->baseIndex, 0, mesh->numVertices,
 				mesh->startIndex, mesh->numPrimitives);
 			m_pEffect->EndPass();
@@ -256,4 +196,9 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 		m_pEffect->End();
 		mesh++;
 	}
+	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
+	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
+	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
+	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
+	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
 }

@@ -47,14 +47,10 @@ bool CObjectRender::Setup()
 {
 	ID3DXBuffer *errors;
 	HRESULT result = D3DXCreateEffectFromFile(g_Device,"object.fx", 0, 0, 0, 0, &m_pEffect, &errors);
-	if(errors)
+	if(!CDebug::CheckForD3D9Errors(errors,
+		"CObjectRender::Setup: D3DXCreateEffectFromFile() - failed while compiling object.fx",
+		result))
 	{
-		MessageBox(0, (char *)errors->GetBufferPointer(), 0, 0);
-		errors->Release();
-	}
-	if(FAILED(result))
-	{
-		MessageBox(0, "CObjectRender::Setup: D3DXCreateEffectFromFile() - failed while compiling object.fx", 0, 0);
 		return false;
 	}
 	return true;
@@ -76,69 +72,7 @@ void CObjectRender::Lost()
 	if(m_pEffect)
 		m_pEffect->OnLostDevice();
 }
-bool FlipNormals(IDirect3DVertexBuffer9 *buffer, UINT ReadSize,UINT ReadOffsetStart,UINT startIndex, UINT numIndices, UINT tangentOffset){
-		IDirect3DIndexBuffer9 *pIndexData;
-		std::vector < UCHAR > sourceArray;
-		sourceArray.resize ( ReadSize );
-		UCHAR* pSourceArrayBytes = &sourceArray[0];
-		{
-				void* pVertexBytesPT = NULL;
-				if ( FAILED( buffer->Lock ( ReadOffsetStart, ReadSize, &pVertexBytesPT, D3DLOCK_NOSYSLOCK ) ) )
-						return false;
-				memcpy ( pSourceArrayBytes, pVertexBytesPT, ReadSize );
-				buffer->Unlock ();
-		}
-		if ( FAILED( g_Device->GetIndices( &pIndexData ) ) )
-            return false;
 
-		// Get index buffer data
-        std::vector < UCHAR > indexArray;
-        indexArray.resize ( ReadSize );
-        UCHAR* pIndexArrayBytes = &indexArray[0];
-        {
-            void* pIndexBytes = NULL;
-            if ( FAILED( pIndexData->Lock ( startIndex*2, numIndices*2, &pIndexBytes, D3DLOCK_NOSYSLOCK | D3DLOCK_READONLY ) ) )
-                return false;
-            memcpy ( pIndexArrayBytes, pIndexBytes, numIndices*2 );
-            pIndexData->Unlock ();
-        }
-		for ( UINT i = 0 ; i < numIndices - 2 ; i += 3 )
-        {
-            // Get triangle vertex indici
-            WORD v0 = ((WORD*)pIndexArrayBytes)[ i ];
-            WORD v1 = ((WORD*)pIndexArrayBytes)[ i + 1 ];
-			WORD v2 = ((WORD*)pIndexArrayBytes)[ i + 2 ];
-			// Get vertex positions from original stream
-            CVector* pTan0 = (CVector*)( pSourceArrayBytes + v0 * tangentOffset );
-            CVector* pTan1 = (CVector*)( pSourceArrayBytes + v1 * tangentOffset );
-            CVector* pTan2 = (CVector*)( pSourceArrayBytes + v2 * tangentOffset );
-			CVector* pNorm0 = (CVector*)( pSourceArrayBytes + v0 * 12 );
-            CVector* pNorm1 = (CVector*)( pSourceArrayBytes + v1 * 12 );
-            CVector* pNorm2 = (CVector*)( pSourceArrayBytes + v2 * 12 );
-			if ( ( i & 1 ) ){
-					(*pTan0).x = -(*pTan0).x;
-					(*pTan0).y = -(*pTan0).y;
-					(*pTan0).z = -(*pTan0).z;
-					(*pTan1).x = -(*pTan1).x;
-					(*pTan1).y = -(*pTan1).y;
-					(*pTan1).z = -(*pTan1).z;
-					(*pTan2).x = -(*pTan2).x;
-					(*pTan2).y = -(*pTan2).y;
-					(*pTan2).z = -(*pTan2).z;
-
-					(*pNorm0).x = -(*pNorm0).x;
-					(*pNorm0).y = -(*pNorm0).y;
-					(*pNorm0).z = -(*pNorm0).z;
-					(*pNorm1).x = -(*pNorm1).x;
-					(*pNorm1).y = -(*pNorm1).y;
-					(*pNorm1).z = -(*pNorm1).z;
-					(*pNorm2).x = -(*pNorm2).x;
-					(*pNorm2).y = -(*pNorm2).y;
-					(*pNorm2).z = -(*pNorm2).z;
-			}
-		}
-		return true;
-}
 void CObjectRender::DefaultRender_Callback(RwResEntry *resEntry, RpAtomic *atomic, int bClipSphere, int flags)
 {
  g_DefaultRender_Atomic = atomic;
@@ -159,11 +93,17 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 												UINT PrimitiveCount)
 {
 	IDirect3DBaseTexture9* diffuse;
+	DWORD oDB,oSB,oBO,oAB,oAT;
 	D3DXVECTOR4 sun;
 	D3DXVECTOR4 cam;
 	D3DXCOLOR ambientColor,ambientColor2;
 	UINT passes;
 	D3DXMATRIX v,p,vp,worldTransposedMatrix,worldViewProj,world,wv;
+	device->GetRenderState(D3DRS_DESTBLEND,&oDB);
+	device->GetRenderState(D3DRS_SRCBLEND,&oSB);
+	device->GetRenderState(D3DRS_BLENDOP,&oBO);
+	device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
+	device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		device->GetTexture(0,&diffuse);
 		m_pEffect->SetTexture("gtDiffuse",diffuse);
@@ -213,11 +153,14 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	m_pEffect->SetVector("gvEye", &cam);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
-	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
 	m_pEffect->EndPass();
-	return m_pEffect->End();
+	m_pEffect->End();
+	device->SetRenderState(D3DRS_DESTBLEND,oDB);
+	device->SetRenderState(D3DRS_SRCBLEND,oSB);
+	device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
+	device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
+	return device->SetRenderState(D3DRS_BLENDOP,oBO);
 }
 HRESULT __fastcall CObjectRender::DefaultRender_DrawPrimitiveB(int ecx0,
                                  int edx0,
@@ -249,11 +192,17 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 												UINT PrimitiveCount)
 {
 	IDirect3DBaseTexture9* diffuse;
+	DWORD oDB,oSB,oBO,oAB,oAT;
 	D3DXVECTOR4 sun;
 	D3DXVECTOR4 cam;
 	D3DXCOLOR ambientColor,ambientColor2;
 	UINT passes;
 	D3DXMATRIX v,p,vp,worldTransposedMatrix,worldViewProj,world,wv;
+	device->GetRenderState(D3DRS_DESTBLEND,&oDB);
+	device->GetRenderState(D3DRS_SRCBLEND,&oSB);
+	device->GetRenderState(D3DRS_BLENDOP,&oBO);
+	device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
+	device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		RwTexture *texture = g_DefaultRender_Atomic->repEntry->meshData.material->texture;
 		device->GetTexture(0,&diffuse);
@@ -304,16 +253,20 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	m_pEffect->SetVector("gvEye", &cam);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
-	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
 	m_pEffect->EndPass();
-	return m_pEffect->End();
+	m_pEffect->End();
+	device->SetRenderState(D3DRS_DESTBLEND,oDB);
+	device->SetRenderState(D3DRS_SRCBLEND,oSB);
+	device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
+	device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
+	return device->SetRenderState(D3DRS_BLENDOP,oBO);
 }
 
 void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, unsigned __int8 type, char flags)
 {
 	D3DXVECTOR4 sun;
+	DWORD oDB,oSB,oBO,oAB,oAT;
 	D3DXVECTOR4 cam;
 	D3DXCOLOR ambientColor,ambientColor2;
 	RxD3D9ResEntryHeader *header;
@@ -324,7 +277,11 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 	UINT passes;
 	D3DXMATRIX world;
 	D3DXMATRIX worldViewProj,lightProj,sunMatrix,vp,proj,worldtransp,lightView,wv;
-
+	g_Device->GetRenderState(D3DRS_DESTBLEND,&oDB);
+	g_Device->GetRenderState(D3DRS_SRCBLEND,&oSB);
+	g_Device->GetRenderState(D3DRS_BLENDOP,&oBO);
+	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
+	g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
 	rwD3D9EnableClippingIfNeeded(object, type);
 	rwD3D9SetRenderState(60, 0xFF000000u); // ?
 	header = &repEntry->header;
@@ -423,8 +380,6 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 		m_pEffect->Begin(&passes,0);
 		if(header->indexBuffer){
 			m_pEffect->BeginPass(0);
-			g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-			g_Device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
 			rwD3D9DrawIndexedPrimitive(header->primType, mesh->baseIndex, 0, mesh->numVertices, mesh->startIndex, mesh->numPrimitives);
 			m_pEffect->EndPass();
 		}
@@ -433,4 +388,13 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 		m_pEffect->End();
 		++mesh;
 	}
+	//rwD3D9SetTextureStageState(1,1,1);
+	//rwD3D9SetTextureStageState(1,4,1);
+	//rwD3D9SetTextureStageState(1,11,1);
+	//rwD3D9SetTextureStageState(1,24,0);
+	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
+	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
+	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
+	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
+	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
 }
