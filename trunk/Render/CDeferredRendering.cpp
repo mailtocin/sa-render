@@ -535,7 +535,7 @@ void CDeferredRendering::Idle(void *a)
 			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&lightingTexture,NULL);
 			lightingTexture->GetSurfaceLevel(0,&lightingSurface);
 		}
-		if(ppTCcount>0){
+		if(ppTCcount>1){
 			for(int i = 0; i<ppTCcount;i++){
 				if(!rtTmpSurface[i]){
 					g_Device->CreateTexture(surfWidth[i],surfHeight[i],0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&rtTmpSurface[i],NULL);
@@ -574,7 +574,6 @@ void CDeferredRendering::Idle(void *a)
 		CVehicleRender::m_pEffect->SetTechnique("Deferred");
 		CPedsRender::m_pEffect->SetTechnique("Deferred");
 		
-		UINT passes;
 		D3DXCOLOR ambientColor,ambientColor2;
 		ambientColor.r = (float)Timecycle->m_fCurrentAmbientRed;
 		ambientColor.g = (float)Timecycle->m_fCurrentAmbientGreen;
@@ -715,7 +714,7 @@ void CDeferredRendering::Idle(void *a)
 
 void CDeferredRendering::RenderScene()
 {
-	double camZ, nearClip;
+	float camZ, nearClip;
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATETEXTURERASTER, NULL);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, FALSE);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, FALSE);
@@ -746,8 +745,8 @@ void CDeferredRendering::RenderScene()
 		if(TheCamera->Cams[TheCamera->ActiveCam].Front.z <= 0.0)
 			camZ = -TheCamera->Cams[TheCamera->ActiveCam].Front.z;
 		else
-			camZ = 0.0;
-		nearClip = ((flt_8CD4F0 * flt_8CD4EC * 0.25 - flt_8CD4F0 * flt_8CD4EC) * camZ + flt_8CD4F0 * flt_8CD4EC) * (Scene->m_pRwCamera->farPlane -
+			camZ = 0.0f;
+		nearClip = ((flt_8CD4F0 * flt_8CD4EC * 0.25f - flt_8CD4F0 * flt_8CD4EC) * camZ + flt_8CD4F0 * flt_8CD4EC) * (Scene->m_pRwCamera->farPlane -
 			Scene->m_pRwCamera->nearPlane);
 		RwCameraEndUpdate(Scene->m_pRwCamera);
 		RwCameraSetNearClipPlane(Scene->m_pRwCamera, nearClip + Scene->m_pRwCamera->nearPlane);
@@ -774,5 +773,5 @@ void CDeferredRendering::RenderScene()
 		RenderWater(); // CWaterLevel::RenderWater
 		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLBACK);
 	}
-	RenderStencil();
+	//RenderStencil();
 }
