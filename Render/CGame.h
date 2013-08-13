@@ -112,6 +112,7 @@
 #define SetCameraMirror(t) ((void (__thiscall *)(CCamera *))0x51A560)(t)
 #define RemoveCameraMirror(t) ((void (__thiscall *)(CCamera *))0x51A5A0)(t)
 #define FindPlayerCoors(outPoint, playerIndex) ((void (__cdecl *)(CVector *, int))0x56E010)(outPoint, playerIndex)
+#define rxD3D9DefaultRenderCallback(resEntry, atomic, bClipSphere, flags) ((void (__cdecl *)(RwResEntry *, RpAtomic *, int, int)) 0x756DF0)(resEntry, atomic, bClipSphere, flags)
 
 // D3D Helpers
 #define SAFE_RELEASE(p) {if(p){(p)->Release();(p)=NULL;}}
@@ -120,7 +121,13 @@ bool GetSunPosn(CVector *dst);
 bool GetSunPosn(CVector *dst, float farClip);
 CVector *GetCamPos();
 bool Im2DRenderQuad(float x1, float y1, float x2, float y2, float z, float recipCamZ, float uvOffset, unsigned int color);
+D3DXMATRIX *GetWorldTransposedMatrix(D3DXMATRIX *out, RwMatrix *world);
 D3DXMATRIX *getWorldViewProj(D3DXMATRIX *out, RwMatrix *world, D3DXMATRIX *viewProj);
 RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX m_View,D3DXMATRIX m_Projection,float screenW,float screenH);
 bool GetCurrentStates(DWORD *oDB,DWORD *oSB,DWORD *oBO,DWORD *oAB,DWORD *oAT);
 bool SetOldStates(DWORD oDB,DWORD oSB,DWORD oBO,DWORD oAB,DWORD oAT);
+class CGlobalValues
+{
+public:
+	static D3DXVECTOR4 gm_SunPosition;
+};

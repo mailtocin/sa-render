@@ -6,7 +6,6 @@
 #include "CPatch.h"
 #include "CDebug.h"
 #include <d3d9.h>
-#include "CGame.h"
 
 ID3DXEffect *CPedsRender::m_pEffect;
 D3DXMATRIX CPedsRender::m_LightViewProj;
@@ -50,95 +49,34 @@ void rwD3D9VSGetInverseWorldMatrix(void *inverseWorldMatrix) {
 
 HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9ResEntryHeader *resEntry, RxD3D9InstanceData *instData)
 {
-	D3DXVECTOR4 sun;
 	DWORD oDB,oSB,oBO,oAB,oAT;
-	g_Device->GetRenderState(D3DRS_DESTBLEND,&oDB);
-	g_Device->GetRenderState(D3DRS_SRCBLEND,&oSB);
-	g_Device->GetRenderState(D3DRS_BLENDOP,&oBO);
-	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
-	g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
-	D3DXVECTOR4 cam;
-	D3DXCOLOR ambientColor,ambientColor2;
-	IDirect3DBaseTexture9 *diffuse,*bump,*specular;
 	UINT passes;
 	D3DXMATRIX world;
-	D3DXMATRIX worldViewProj,lightProj,sunMatrix,vp,proj,worldtransp,lightView,view,wv;
+	D3DXCOLOR color;
+	D3DXMATRIX worldViewProj,vp,proj,worldtransp,view;
 	HRESULT result;
 	D3DXVECTOR4 constData[224];
+	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	g_Device->GetVertexShaderConstantF(5,(float*)constData,224);
 	m_pEffect->SetVectorArray("constdata",constData,224);
 	g_Device->GetTransform(D3DTS_PROJECTION,&proj);
 	g_Device->GetTransform(D3DTS_VIEW,&view);
 	rwD3D9VSGetWorldNormalizedTransposeMatrix(&world);
-	rwD3D9VSGetWorldViewTransposedMatrix(&wv);
 	rwD3D9VSGetInverseWorldMatrix((void*)worldtransp);
 	D3DXMatrixInverse(&worldtransp,NULL,&worldtransp);
 	D3DXMatrixTranspose(&worldtransp,&worldtransp);
 	D3DXMatrixMultiplyTranspose(&vp,&view,&proj);
 	D3DXMatrixMultiply(&worldViewProj,&vp,&worldtransp);
-	GetSunPosn((CVector *)&sun);
-	sun.w = 1.0;
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
 	m_pEffect->SetMatrix("gmWorld",&world);
-	m_pEffect->SetMatrix("gmWorldView",&wv);
-	m_pEffect->SetVector("gvDirLight", &sun);
-	ambientColor.r = (float)Timecycle->m_fCurrentAmbientRed;
-	ambientColor.g = (float)Timecycle->m_fCurrentAmbientGreen;
-	ambientColor.b = (float)Timecycle->m_fCurrentAmbientBlue;
-	ambientColor.a = 1.0;
-	m_pEffect->SetVector("gvAmbientColor", (D3DXVECTOR4 *)&ambientColor);
-	ambientColor2.r = (float)Timecycle->m_fCurrentAmbientObjRed;
-	ambientColor2.g = (float)Timecycle->m_fCurrentAmbientObjGreen;
-	ambientColor2.b = (float)Timecycle->m_fCurrentAmbientObjBlue;
-	ambientColor2.a = 1.0;
-	m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);
-	memcpy(&cam, GetCamPos(), 12);
-	cam.w = 1.0;
-	m_pEffect->SetVector("gvEye", &cam);
-	if (*rwD3D9LastPixelShaderUsed)
-	{
-		*rwD3D9LastPixelShaderUsed = NULL;
-		g_Device->SetPixelShader(NULL);
-	}
+	color.r = (float)instData->material->color.red / 255.0f;
+	color.g = (float)instData->material->color.green / 255.0f;
+	color.b = (float)instData->material->color.blue / 255.0f;
+	color.a = (float)instData->material->color.alpha / 255.0f;
+	m_pEffect->SetVector("gvColor", (D3DXVECTOR4 *)&color);
 	if (instData->material->texture)
 	{
-		STexture *texture = (STexture *)instData->material->texture;
-		rwD3D9SetTexture(texture, 0);
-		g_Device->GetTexture(0,&diffuse);
-		m_pEffect->SetTexture("gtDiffuse",diffuse);
-		if(texture){
-				if(texture->m_pNormalMap)
-				{
-						rwD3D9SetTexture(texture->m_pNormalMap, 1);
-						g_Device->GetTexture(1,&bump);
-						m_pEffect->SetTexture("gtNormals",bump);
-						if(texture->m_pSpecMap) {
-								rwD3D9SetTexture(texture->m_pSpecMap, 2);
-								g_Device->GetTexture(2,&specular);
-								m_pEffect->SetTexture("gtSpecular",specular);
-						} else {
-								m_pEffect->SetTexture("gtSpecular",CVehicleRender::defspec);
-						}
-				} else {
-						if(texture->m_pSpecMap) {
-								rwD3D9SetTexture(texture->m_pSpecMap, 2);
-								g_Device->GetTexture(2,&specular);
-								m_pEffect->SetTexture("gtSpecular",specular);
-						} else {
-								m_pEffect->SetTexture("gtSpecular",CVehicleRender::defspec);
-						}
-						m_pEffect->SetTexture("gtNormals",CVehicleRender::defnormal);
-				}
-		}
-	}
-	else
-	{
-		rwD3D9SetTexture(0, 0);
-	}
-	if(*rwD3D9LastVertexShaderUsed != instData->vertexShader)
-	{
-		*rwD3D9LastVertexShaderUsed = (IDirect3DVertexShader9*)instData->vertexShader;
-		g_Device->SetVertexShader((IDirect3DVertexShader9*)instData->vertexShader);
+		CRender::SetTextureMaps((STexture*)instData->material->texture,m_pEffect);
 	}
 	if(resEntry->indexBuffer)
 	{
@@ -149,15 +87,6 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 		m_pEffect->EndPass();
 		m_pEffect->End();
 	}
-	else
-	{
-		rwD3D9RenderStateFlushCache();
-		result = g_Device->DrawPrimitive((D3DPRIMITIVETYPE)resEntry->primType, instData->baseIndex, instData->numPrimitives);
-	}
-	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
-	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
-	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
-	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
-	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
+	SetOldStates(oDB,oSB,oBO,oAB,oAT);
 	return result;
 }
