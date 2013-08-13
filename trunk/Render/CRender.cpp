@@ -15,6 +15,8 @@
 #pragma comment(lib, "D3DDeviceReset.lib")
 
 D3DXMATRIX CRender::m_mTransform;
+IDirect3DTexture9 *CRender::defnormal;
+IDirect3DTexture9 *CRender::defspec;
 
 void CRender::Patch()
 {
@@ -32,6 +34,8 @@ void CRender::Patch()
 
 void CRender::Setup()
 {
+	D3DXCreateTextureFromFile(g_Device,"normal.tga",&defnormal);
+	D3DXCreateTextureFromFile(g_Device,"spec.tga",&defspec);
 	CDeferredRendering::Setup();
 	CVehicleRender::Setup();
 	CObjectRender::Setup();
@@ -75,4 +79,35 @@ D3DXMATRIX *__cdecl CRender::_getComposedMatrix(D3DXMATRIX *m_out)
 		result = D3DXMatrixTranspose(m_out, &viewproj);
 
 	return result;
+}
+
+void CRender::SetTextureMaps(STexture* tex, ID3DXEffect* effect) {
+	IDirect3DBaseTexture9 *diffuse,*bump,*specular;
+	rwD3D9SetTexture(tex, 0);
+	g_Device->GetTexture(0,&diffuse);
+	effect->SetTexture("gtDiffuse",diffuse);
+	if(tex){
+		if(tex->m_pNormalMap)
+		{
+			rwD3D9SetTexture(tex->m_pNormalMap, 1);
+			g_Device->GetTexture(1,&bump);
+			effect->SetTexture("gtNormals",bump);
+			if(tex->m_pSpecMap) {
+					rwD3D9SetTexture(tex->m_pSpecMap, 2);
+					g_Device->GetTexture(2,&specular);
+					effect->SetTexture("gtSpecular",specular);
+			} else {
+					effect->SetTexture("gtSpecular",defspec);
+			}
+		} else {
+				if(tex->m_pSpecMap) {
+					rwD3D9SetTexture(tex->m_pSpecMap, 2);
+					g_Device->GetTexture(2,&specular);
+					effect->SetTexture("gtSpecular",specular);
+				} else {
+					effect->SetTexture("gtSpecular", defspec);
+				}
+				effect->SetTexture("gtNormals", defnormal);
+		}
+	}
 }

@@ -12,7 +12,7 @@ texture2D screenBuffer_8 < int width = 1024; int height = 768; >;
 texture2D screenBuffer_9 < int width = 256; int height = 256; >;
 texture2D screenBuffer_10 < int width = 128; int height = 128; >;
 texture2D screenBuffer_11 < int width = 1; int height = 1; >;
-texture2D screenBuffer_12 < int width = 1024; int height = 768; >;
+texture2D screenBuffer_12 < int width = 1024; int height = 786; >;
 texture2D normalSpecBuffer;
 texture2D shadowDepthBuffer;
 texture2D noise;
@@ -50,8 +50,8 @@ sampler2D colorGBUFF = sampler_state
 sampler2D cloudSampler = sampler_state
 {
    Texture = <cloudTex>;
-   MinFilter = LINEAR;
-   MagFilter = LINEAR;
+   MinFilter = POINT;
+   MagFilter = POINT;
    MipFilter = None;
    AddressU = Wrap;
    AddressV = Wrap;
@@ -59,8 +59,8 @@ sampler2D cloudSampler = sampler_state
 sampler2D lightBUFF = sampler_state
 {
    Texture = <lightBuffer>;
-   MinFilter = LINEAR;
-   MagFilter = LINEAR;
+   MinFilter = POINT;
+   MagFilter = POINT;
    MipFilter = None;
    AddressU = Wrap;
    AddressV = Wrap;
@@ -95,8 +95,8 @@ sampler2D normalscreenSampler = sampler_state
 sampler2D ssaoSampler = sampler_state
 {
    Texture = <screenBuffer_1>;
-   MinFilter = POINT;
-   MagFilter = POINT;
+   MinFilter = LINEAR;
+   MagFilter = LINEAR;
    MipFilter = None;
    AddressU = Clamp;
    AddressV = Clamp;
@@ -203,8 +203,8 @@ sampler2D out_Tonemap_Sampler = sampler_state
 sampler2D noiseSampler = sampler_state
 {
    Texture = <noise>;
-   MinFilter = POINT;
-   MagFilter = POINT;
+   MinFilter = LINEAR;
+   MagFilter = LINEAR;
    MipFilter = None;
    AddressU = Wrap;
    AddressV = Wrap;
@@ -567,14 +567,14 @@ float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
 		shadow[n] = mul(mul(gmLightViewProj[n],float4(WSpos.xyz,1.0)),bias_mat);
 	}
 	half fSplitIndex = GetSplitByDepth(WSpos.w);
-	half lighting = saturate(dot(normalize(lightDirection),normal)).x/*GetShadow(fSplitIndex, shadow)*/;
+	half lighting = saturate(dot(normalize(lightDirection),normal)).x*GetShadow(fSplitIndex, shadow);
 	//float3 ambient = lerp(gvAmbientColor2.xyz,gvAmbientColor.xyz,normalize(1-sqrt(1-dot(normal.xy, normal.xy))));
 	//float3 finalColor = (saturate(lighting)*SunColor+0.3)*tex2D(colorGBUFF,IN.texcoord).xyz;
 	//float  fNdotV     = saturate(dot( normal, normalize(gmViewInv[2].xyz)));
 	//float3 vReflection = 2 * normal * fNdotV - normalize(gmViewInv[2].xyz);
 	//float3 hitPos = viewPos;
     float dDepth;
-	return float4(saturate(lighting.xxx)*SunColor,1);
+	return float4(saturate(lighting.xxx),1);
 }
 float4 mainPL_PS(VS_OUTPUT_POST IN) : COLOR {
 	float3 normalSpec = tex2D(nsGBUFF,IN.texcoord).xyz;

@@ -1,7 +1,6 @@
 #include "CImmediateRender.h"
 #include "CPatch.h"
 #include <d3d9.h>
-#include "CGame.h"
 
 eImmediateRendering CImmediateRender::m_nCurrentRendering;
 

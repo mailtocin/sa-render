@@ -2,6 +2,7 @@
 #include "D3D9Headers\d3d9.h"
 #include "D3D9Headers\d3dx9.h"
 #include "RenderWare.h"
+#include "CGame.h"
 class CDeferredRendering
 {
 public:

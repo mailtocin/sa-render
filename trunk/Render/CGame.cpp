@@ -1,5 +1,5 @@
 #include "CGame.h"
-
+D3DXVECTOR4 CGlobalValues::gm_SunPosition;
 bool GetSunPosn(CVector *dst)
 {
 	float sunDistance;
@@ -97,27 +97,31 @@ bool Im2DRenderQuad(float x1, float y1, float x2, float y2, float z, float recip
   return 1;
 }
 
+D3DXMATRIX *GetWorldTransposedMatrix(D3DXMATRIX *out, RwMatrix *world) {
+	out->m[0][0] = world->right.x;
+	out->m[0][1] = world->up.x;
+	out->m[0][2] = world->at.x;
+	out->m[0][3] = world->pos.x;
+
+	out->m[1][0] = world->right.y;
+	out->m[1][1] = world->up.y;
+	out->m[1][2] = world->at.y;
+	out->m[1][3] = world->pos.y;
+
+	out->m[2][0] = world->right.z;
+	out->m[2][1] = world->up.z;
+	out->m[2][2] = world->at.z;
+	out->m[2][3] = world->pos.z;
+
+	out->m[3][0] = 0.0f;
+	out->m[3][1] = 0.0f;
+	out->m[3][2] = 0.0f;
+	out->m[3][3] = 1.0f;
+	return out;
+}
 D3DXMATRIX *getWorldViewProj(D3DXMATRIX *out, RwMatrix *world, D3DXMATRIX *viewProj) {
  D3DXMATRIX view,proj,worldtransp;
-	worldtransp.m[0][0] = world->right.x;
-	worldtransp.m[0][1] = world->up.x;
-	worldtransp.m[0][2] = world->at.x;
-	worldtransp.m[0][3] = world->pos.x;
-
-	worldtransp.m[1][0] = world->right.y;
-	worldtransp.m[1][1] = world->up.y;
-	worldtransp.m[1][2] = world->at.y;
-	worldtransp.m[1][3] = world->pos.y;
-
-	worldtransp.m[2][0] = world->right.z;
-	worldtransp.m[2][1] = world->up.z;
-	worldtransp.m[2][2] = world->at.z;
-	worldtransp.m[2][3] = world->pos.z;
-
-	worldtransp.m[3][0] = 0.0f;
-	worldtransp.m[3][1] = 0.0f;
-	worldtransp.m[3][2] = 0.0f;
-	worldtransp.m[3][3] = 1.0f;
+	GetWorldTransposedMatrix(&worldtransp,world);
 
    g_Device->GetTransform(D3DTS_VIEW,&view);
    g_Device->GetTransform(D3DTS_PROJECTION,&proj);

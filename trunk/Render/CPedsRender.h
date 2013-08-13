@@ -1,6 +1,7 @@
 #pragma once
 #include "RenderWare.h"
 #include "D3D9Headers\d3dx9.h"
+#include "CGame.h"
 
 class CPedsRender
 {

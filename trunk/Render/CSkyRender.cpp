@@ -89,5 +89,7 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 }
 void CSkyRender::Release()
 {
-	SAFE_RELEASE(skySphere);
+	if(skySphere){
+		skySphere->Release();
+	}
 }

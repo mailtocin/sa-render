@@ -1,6 +1,5 @@
 #include "CDeferredRendering.h"
 #include "CPatch.h"
-#include "CGame.h"
 #include "CDebug.h"
 #include "CVehicleRender.h"
 #include "CObjectRender.h"
@@ -49,9 +48,11 @@ D3DXVECTOR3 m_vLightDirection;
 // Setup function
 bool CDeferredRendering::Setup()
 {
+	g_D3Dpp->MultiSampleQuality = 0;
+	g_D3Dpp->MultiSampleType = D3DMULTISAMPLE_NONE;
 	ID3DXBuffer *errors;
 	HRESULT result;
-	m_vUpVector = &D3DXVECTOR3(0, 1, 0);
+	m_vUpVector = new D3DXVECTOR3(0, 1, 0);
 	// Loading shader... TODO: Load it from folder...
 	result = D3DXCreateEffectFromFile(g_Device,"deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors, "CDeferredRendering", "deferred", result))	{
@@ -95,6 +96,7 @@ bool CDeferredRendering::Setup()
 // On Reset Device
 void CDeferredRendering::Reset()
 {
+
 	if(m_pEffect)
 		m_pEffect->OnResetDevice();
 }
@@ -141,12 +143,10 @@ void CDeferredRendering::DrawPostProcessPass() {
 //--------------------------On Lost Device--------------------------------
 void CDeferredRendering::Lost()
 {
-	/*
 	for(int i = 0;i<4;i++) {
 		SAFE_RELEASE(shadowSurface[i]);
 		SAFE_RELEASE(shadow[i]);
 	}
-	*/
 	for(int i = 0;i<3;i++) {
 		SAFE_RELEASE(gbSurface[i]);
 		SAFE_RELEASE(gbuffer[i]);
@@ -287,7 +287,7 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 										  D3DXMATRIX*lightproj,float dd)
 {
 	// 1) We need to stop current camera updating to avoid bugs.
-	RwCameraEndUpdate(Scene->m_pRwCamera);
+	//RwCameraEndUpdate(Scene->m_pRwCamera);
 	// 2) We need to get some values(sun position and player position).
 	RwV3D sunpos;
 	CVector camPos;
@@ -345,8 +345,8 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	g_Device->GetTransform(D3DTS_PROJECTION,&proj);
 	g_Device->GetRenderTarget(0, &pOldRTSurf);
 	g_Device->GetDepthStencilSurface(&m_pZBuffer);
-	SAFE_RELEASE(pOldRTSurf);
-	SAFE_RELEASE(m_pZBuffer);
+	pOldRTSurf->Release();
+	m_pZBuffer->Release();
 	// 4) We need to compute all needed matrix's.
 	D3DXMatrixLookAtLH(lightview,&D3DXVECTOR3(camPos.x+(sunpos.x),
 											  camPos.y+(sunpos.y),
@@ -355,7 +355,6 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 								 &D3DXVECTOR3(0,1,0));
 	D3DXMatrixOrthoLH(lightproj,faDiff[0]/dd, faDiff[1]/dd, -ZNear, fLightZFar);
 	// 5) We need to render scene from light position.
-	RwCameraBeginUpdate(Scene->m_pRwCamera);
 	g_Device->SetRenderTarget(0,shadowSurfaceC);
 	g_Device->SetDepthStencilSurface(shadowSurface);
 	RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
@@ -366,9 +365,7 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	g_Device->SetTransform(D3DTS_PROJECTION,lightproj);
 	RenderScene();
 	RenderPedWeapons();
-	RwCameraEndUpdate(Scene->m_pRwCamera);
 	// 6) We need to set rendering back.
-	RwCameraBeginUpdate(Scene->m_pRwCamera);
 	g_Device->SetRenderTarget(0,pOldRTSurf);
 	g_Device->SetDepthStencilSurface(m_pZBuffer);
 	SAFE_RELEASE(pOldRTSurf);
@@ -439,15 +436,16 @@ void CDeferredRendering::Idle(void *a)
 		RwCameraSetFarClipPlane(Scene->m_pRwCamera, 1500);
 		Scene->m_pRwCamera->fogPlane = Timecycle->m_fCurrentFogStart;
 		//RenderMirrors();
-		RwCameraEndUpdate(Scene->m_pRwCamera);
+		//RwCameraEndUpdate(Scene->m_pRwCamera);
 //---------------------------Initialization------------------------------
 		CVehicleRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CVehicleRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
+		CVehicleRender::m_pEffect->SetTexture("noise",noise);
 		CObjectRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CObjectRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
 		CPedsRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CPedsRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
-		/*
+		
 		for(int i =0;i<4;i+=2){
 			if(!shadow[i]){
 				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_R5G6B5,D3DPOOL_DEFAULT,&shadow[i],NULL);
@@ -460,10 +458,10 @@ void CDeferredRendering::Idle(void *a)
 				shadow[i]->GetSurfaceLevel(0,&shadowSurface[i]);
 			}
 		}
-		*/
+		
 		for(int i =0;i<3;i++) {
 			if(!gbuffer[i]) {
-				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&gbuffer[i],NULL);
+				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,i==2? D3DFMT_A32B32G32R32F:D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT,&gbuffer[i],NULL);
 				gbuffer[i]->GetSurfaceLevel(0,&gbSurface[i]);
 			}
 		}
@@ -481,15 +479,15 @@ void CDeferredRendering::Idle(void *a)
 		}
 		IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
 		D3DXMATRIX view,proj,viewproj,invview,invviewproj;
-		RwV3D sunpos,camPos;
-		GetSunPosn(&sunpos,1000);
+		RwV3D camPos;
+		GetSunPosn((CVector*)&CGlobalValues::gm_SunPosition,1000);
 
 		FindPlayerCoors(&camPos, 0);
-		RwCameraBeginUpdate(Scene->m_pRwCamera);
-		//ComputeShadowMap(shadowSurface[1],shadowSurface[0],150,&g_mLightView[0],&g_mLightProj,45);
-		//ComputeShadowMap(shadowSurface[3],shadowSurface[2],150,&g_mLightView[1],&g_mLightProj2,5);
+		//RwCameraBeginUpdate(Scene->m_pRwCamera);
+		ComputeShadowMap(shadowSurface[1],shadowSurface[0],150,&g_mLightView[0],&g_mLightProj,45);
+		ComputeShadowMap(shadowSurface[3],shadowSurface[2],150,&g_mLightView[1],&g_mLightProj2,5);
 		//DrawCubemap();
-		RwCameraEndUpdate(Scene->m_pRwCamera);
+		//RwCameraEndUpdate(Scene->m_pRwCamera);
 		g_Device->GetTransform(D3DTS_VIEW,&view);
 		g_Device->GetTransform(D3DTS_PROJECTION,&proj);
 		D3DXMatrixInverse(&invview,NULL,&view);
@@ -497,7 +495,10 @@ void CDeferredRendering::Idle(void *a)
 		D3DXMatrixInverse(&invviewproj,NULL,&viewproj);
 		cam = D3DXVECTOR4(camPos.x,camPos.y,camPos.z,1);
 		CSkyRender::PreRender(&cam,&viewproj);
-		RwCameraBeginUpdate(Scene->m_pRwCamera);
+		D3DXCOLOR cc;
+		cc.r = 1;cc.g = 1;cc.b = 1;cc.a = 1;
+
+		//RwCameraBeginUpdate(Scene->m_pRwCamera);
 //----------------------------------------------------------------------
 //-------------------Render into geometry buffer-------------------------
 		g_Device->GetRenderTarget(0, &pOldRTSurf);
@@ -505,6 +506,7 @@ void CDeferredRendering::Idle(void *a)
 		g_Device->SetRenderTarget(0,gbSurface[0]);
 		g_Device->SetRenderTarget(1,gbSurface[1]);
 		g_Device->SetRenderTarget(2,gbSurface[2]);
+		//g_Device->Clear(0,NULL,D3DCLEAR_STENCIL||D3DCLEAR_TARGET||D3DCLEAR_ZBUFFER,cc,0,0);
 		RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
 		CObjectRender::m_pEffect->SetTechnique("Deferred");
 		CVehicleRender::m_pEffect->SetTechnique("Deferred");
@@ -523,17 +525,15 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetMatrix("gmViewProj",&viewproj);
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
-		sun = D3DXVECTOR4(camPos.x+(sunpos.x),camPos.y+(sunpos.y),camPos.z+(sunpos.z),1);
+		sun = D3DXVECTOR4(camPos.x+(CGlobalValues::gm_SunPosition.x),camPos.y+(CGlobalValues::gm_SunPosition.y),camPos.z+(CGlobalValues::gm_SunPosition.z),1);
 		CSkyRender::Render(&sun);
 		RenderScene();
 		RenderPedWeapons();
-		RwCameraEndUpdate(Scene->m_pRwCamera);
 //----------------------------------------------------------------------
 		CSkyRender::Release();
 		DWORD dwOldFVF;
 		DWORD oDB,oSB,oBO,oAB,oAT;
 		const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
-		RwCameraBeginUpdate(Scene->m_pRwCamera);
 //-------------------Render Deferred Lighting----------------------------
 		g_Device->GetFVF(&dwOldFVF);
 		GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
@@ -541,6 +541,7 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetTechnique("DefShad");
 		D3DXMATRIX m_LightViewProj[2];
 		g_Device->SetRenderTarget(0,lightingSurface);
+		//g_Device->SetRenderTarget(0,pOldRTSurf);
 		g_Device->SetRenderTarget(1,NULL);
 		g_Device->SetRenderTarget(2,NULL);
 		D3DXMatrixMultiplyTranspose(&m_LightViewProj[0],&g_mLightView[0],&g_mLightProj);
@@ -557,7 +558,7 @@ void CDeferredRendering::Idle(void *a)
 		// ------------
 		cam = *(D3DXVECTOR4*)GetCamPos();
 		m_pEffect->SetVector("vDir",&D3DXVECTOR4(cam.x-camPos.x,cam.y-camPos.y,cam.z-camPos.z,1));
-		m_pEffect->SetVector("sLP",&D3DXVECTOR4(sunpos.x+camPos.x,sunpos.y+camPos.y,sunpos.z+camPos.z,1));
+		m_pEffect->SetVector("lightDirection",&D3DXVECTOR4(CGlobalValues::gm_SunPosition.x+camPos.x,CGlobalValues::gm_SunPosition.y+camPos.y,CGlobalValues::gm_SunPosition.z+camPos.z,1));
 		DrawPostProcessPass();
 		m_pEffect->SetTechnique("DefShadPL");
 		if(CLights::m_nNumLights > 0)
@@ -588,7 +589,7 @@ void CDeferredRendering::Idle(void *a)
 		g_Device->SetFVF(dwOldFVF);
 		SetOldStates(oDB,oSB,oBO,oAB,oAT);
 		RenderEffects();
-		//sub_53E8D0(g_Unk);
+		sub_53E8D0(g_Unk);
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )
 			SetCameraMotionBlurAlpha(TheCamera, 150); // CCamera::SetMotionBlurAlpha
 		RenderCameraMotionBlur(TheCamera);            // CCamera::RenderMotionBlur
