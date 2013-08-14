@@ -126,9 +126,8 @@ Deferred_OUT DeferredPS(VS_OUTPUT IN,float2 viewpos:VPOS)
 	float3x3 mTangentToWorld = transpose( float3x3( IN.tangent, IN.binormal, IN.normal ) );
 	float3   vNormalWorld    = normalize( mul( mTangentToWorld, vNormal ));
 	OUT.col0 = tex2D(gsDiffuse, IN.texcoord.xy)* gvPaintColor;
-	OUT.col1.xy = vNormalWorld.xy;
-	OUT.col1.z = tex2D( gsSpecular, IN.texcoord.xy ).x;
-	OUT.col1.w = 1;
+	OUT.col1.xyz = vNormalWorld.xyz;
+	OUT.col1.w = tex2D( gsSpecular, IN.texcoord.xy ).x;
 	
 	OUT.col2 = float4(IN.wpos.xyz,1);
 	//OUT.col3 = float4(1,1,1,1);

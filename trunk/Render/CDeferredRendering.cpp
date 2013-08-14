@@ -171,37 +171,32 @@ void CDeferredRendering::Patch()
 
 //-------------------------Post-Process loop------------------------------
 void CDeferredRendering::PostProcess(IDirect3DSurface9 *outSurf){
-	if(ppTCcount>1){
-		for(int i = 0; i<ppTCcount-1;i++){
-			std::stringstream sstm;
-			g_Device->SetRenderTarget(0,rsTmpSurface[i+1]);
-			sstm << "PostProcess_" << i;
-			std::string result = sstm.str();
-			m_pEffect->SetTechnique((char*)result.c_str());
-			std::stringstream sstm1;
-			sstm1 << "screenBuffer_" << i;
-			std::string result1 = sstm1.str();
-			m_pEffect->SetTexture((char*)result1.c_str(),rtTmpSurface[i]);
-			DrawPostProcessPass();
-		}
+	std::string tempString;
+	for(int i = 1; i<ppTCcount;i++){
+		g_Device->SetRenderTarget(0,rsTmpSurface[i]);
+
+		tempString = "PostProcess_";
+		tempString += std::to_string((long double)i - 1);
+		m_pEffect->SetTechnique((char*)tempString.c_str());
+		tempString = "screenBuffer_";
+		tempString += std::to_string((long double)i - 1);
+		m_pEffect->SetTexture((char*)tempString.c_str(),rtTmpSurface[i-1]);
+		DrawPostProcessPass();
 	}
 	g_Device->SetRenderTarget(0,outSurf);
-	std::stringstream sstm;
-	sstm << "PostProcess_" << ppTCcount-1;
-	std::string result = sstm.str();
-	m_pEffect->SetTechnique((char*)result.c_str());
+	tempString = "PostProcess_";
+	tempString += std::to_string((long double)ppTCcount - 1);
+	m_pEffect->SetTechnique((char*)tempString.c_str());
 
-	std::stringstream sstm1;
-	sstm1 << "screenBuffer_" << ppTCcount-1;
-	std::string result1 = sstm1.str();
-	m_pEffect->SetTexture((char*)result1.c_str(),rtTmpSurface[ppTCcount-1]);
+	tempString = "screenBuffer_";
+	tempString += std::to_string((long double)ppTCcount - 1);
+	m_pEffect->SetTexture((char*)tempString.c_str(),rtTmpSurface[ppTCcount-1]);
 	DrawPostProcessPass();
 }
 //------------------------------------------------------------------------
 
 // Cubemap rendering.. TODO: Make it WORK!!!!1111
 void CDeferredRendering::DrawCubemap(){
-	RwCameraEndUpdate(Scene->m_pRwCamera);
 	if(!cubemap){
 		g_Device->CreateCubeTexture(64,0,D3DUSAGE_RENDERTARGET,
 									D3DFMT_R8G8B8,D3DPOOL_DEFAULT,
@@ -213,8 +208,8 @@ void CDeferredRendering::DrawCubemap(){
 	g_Device->GetTransform(D3DTS_PROJECTION, &proj);
 	g_Device->GetRenderTarget(0, &pOldRTSurf);
 	g_Device->GetDepthStencilSurface(&m_pZBuffer);
-	SAFE_RELEASE(pOldRTSurf);
-	SAFE_RELEASE(m_pZBuffer);
+	pOldRTSurf->Release();
+	m_pZBuffer->Release();
 	D3DXMATRIX matProj;
 	D3DXMatrixPerspectiveFovLH(&matProj, D3DX_PI/2, 1.0f, 0.5f, 1000.0f);
 	CVector camPos;
@@ -256,7 +251,6 @@ void CDeferredRendering::DrawCubemap(){
 		D3DXMatrixLookAtLH(&matView, &vEnvEyePt, &(vLookatPt+vEnvEyePt), &vUpVec);
 		IDirect3DSurface9 *pFace;
 		cubemap->GetCubeMapSurface((D3DCUBEMAP_FACES)i, 0, &pFace);
-		RwCameraBeginUpdate(Scene->m_pRwCamera);
 		g_Device->SetRenderTarget(0,pFace);
 		SAFE_RELEASE(pFace);
 		g_Device->SetDepthStencilSurface(m_pZBuffer);
@@ -268,9 +262,7 @@ void CDeferredRendering::DrawCubemap(){
 		CPedsRender::m_pEffect->SetTechnique("Shadow");
 		RenderScene();
 		RenderPedWeapons();
-		RwCameraEndUpdate(Scene->m_pRwCamera);
 	}
-	RwCameraBeginUpdate(Scene->m_pRwCamera);
 	g_Device->SetRenderTarget(0,pOldRTSurf);
 	g_Device->SetDepthStencilSurface(m_pZBuffer);
 	SAFE_RELEASE(pOldRTSurf);
@@ -433,7 +425,7 @@ void CDeferredRendering::Idle(void *a)
 			Timecycle->m_nCurrentSkyBottomRed, Timecycle->m_nCurrentSkyBottomGreen, Timecycle->m_nCurrentSkyBottomBlue, 255))
 			return;
 		DefinedState();
-		RwCameraSetFarClipPlane(Scene->m_pRwCamera, 1500);
+		RwCameraSetFarClipPlane(Scene->m_pRwCamera, Timecycle->m_fCurrentFarClip);
 		Scene->m_pRwCamera->fogPlane = Timecycle->m_fCurrentFogStart;
 		//RenderMirrors();
 		//RwCameraEndUpdate(Scene->m_pRwCamera);
@@ -461,7 +453,7 @@ void CDeferredRendering::Idle(void *a)
 		
 		for(int i =0;i<3;i++) {
 			if(!gbuffer[i]) {
-				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,i==2? D3DFMT_A32B32G32R32F:D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT,&gbuffer[i],NULL);
+				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,i==2? D3DFMT_A32B32G32R32F:D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT,&gbuffer[i],NULL);
 				gbuffer[i]->GetSurfaceLevel(0,&gbSurface[i]);
 			}
 		}
@@ -472,7 +464,7 @@ void CDeferredRendering::Idle(void *a)
 		if(ppTCcount>1) {
 			for(int i = 0; i<ppTCcount;i++) {
 				if(!rtTmpSurface[i]) {
-					g_Device->CreateTexture(surfWidth[i],surfHeight[i],0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&rtTmpSurface[i],NULL);
+					g_Device->CreateTexture(surfWidth[i] == -1? RsGlobal->MaximumWidth:surfWidth[i],surfHeight[i] == -1? RsGlobal->MaximumHeight:surfHeight[i],0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&rtTmpSurface[i],NULL);
 					rtTmpSurface[i]->GetSurfaceLevel(0,&rsTmpSurface[i]);
 				}
 			}
@@ -588,8 +580,10 @@ void CDeferredRendering::Idle(void *a)
 		PostProcess(pOldRTSurf);
 		g_Device->SetFVF(dwOldFVF);
 		SetOldStates(oDB,oSB,oBO,oAB,oAT);
+		//RenderWater();
+		//RenderClouds();
 		RenderEffects();
-		sub_53E8D0(g_Unk);
+		//sub_53E8D0(g_Unk);
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )
 			SetCameraMotionBlurAlpha(TheCamera, 150); // CCamera::SetMotionBlurAlpha
 		RenderCameraMotionBlur(TheCamera);            // CCamera::RenderMotionBlur
@@ -637,14 +631,14 @@ void CDeferredRendering::RenderScene()
 	}
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void *)TRUE);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void *)TRUE);
-	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESHADEMODE, (void *)rwSHADEMODEGOURAUD);
-	UpdateSunLightForCustomRenderingPipeline();*/
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESHADEMODE, (void *)rwSHADEMODEGOURAUD);*/
+	UpdateSunLightForCustomRenderingPipeline();
 	RenderRoads();                      // CRenderer::RenderRoads
 	//RenderCoronasReflections();         // CCoronas::RenderReflections
 	RenderEverythingBarRoads();         // CRenderer::RenderEverythingBarRoads
 	RenderBrokenObjects(byte_BB4240, 0);
-	/*RenderFadingInUnderwaterEntities(); // CRenderer::RenderFadingInUnderwaterEntities
-	if(gCameraSeaDepth <= 0.0)
+	RenderFadingInUnderwaterEntities(); // CRenderer::RenderFadingInUnderwaterEntities
+	/*if(gCameraSeaDepth <= 0.0)
 	{
 		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLNONE);
 		RenderWater(); //CWaterLevel::RenderWater

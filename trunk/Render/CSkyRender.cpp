@@ -55,10 +55,10 @@ bool CSkyRender::CreateSkySphere(float fRad,UINT slices,UINT stacks) {
 }
 void CSkyRender::PreRender(D3DXVECTOR4 *pos,D3DXMATRIX *viewproj)
 {
-	CreateSkySphere(1000,100,100);
+	CreateSkySphere(Timecycle->m_fCurrentFarClip*0.9f,100,100);
 	D3DXMATRIX meshRotate, meshTranslate;
 	D3DXMatrixRotationY(&meshRotate, D3DXToRadian(0));
-	D3DXMatrixTranslation(&meshTranslate, pos->x,pos->y,pos->z);
+	D3DXMatrixTranslation(&meshTranslate, pos->x,pos->y,-175);
 	D3DXMatrixMultiply(&gm_World, &meshRotate, &meshTranslate);
 	D3DXMatrixMultiplyTranspose(&gm_WorldViewProjection, &gm_World, viewproj);
 }
@@ -66,14 +66,24 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 {
 	UINT passes;
 	DWORD oDB,oSB,oBO,oAB,oAT;
-	g_Device->GetRenderState(D3DRS_DESTBLEND,&oDB);
-	g_Device->GetRenderState(D3DRS_SRCBLEND,&oSB);
-	g_Device->GetRenderState(D3DRS_BLENDOP,&oBO);
-	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,&oAB);
-	g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,&oAT);
+	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	m_pEffect->SetTechnique("Sky");
 	m_pEffect->SetTexture("cloudTex",CloudTex);
 	m_pEffect->SetVector("lightDirection",lightDirection);
+	m_pEffect->SetVector("skyColorTop",&D3DXVECTOR4((float)Timecycle->m_nCurrentSkyTopRed/255.0f,
+													(float)Timecycle->m_nCurrentSkyTopGreen/255.0f,
+													(float)Timecycle->m_nCurrentSkyTopBlue/255.0f,
+													1.0f));
+	m_pEffect->SetVector("skyColorTop",&D3DXVECTOR4((float)Timecycle->m_nCurrentSkyBottomRed/255.0f,
+													(float)Timecycle->m_nCurrentSkyBottomGreen/255.0f,
+													(float)Timecycle->m_nCurrentSkyBottomBlue/255.0f,
+													1.0f));
+	m_pEffect->SetVector("TopCloudColor",&D3DXVECTOR4((float)Timecycle->m_nCurrentSkyTopRed/255.0f,
+													  (float)Timecycle->m_nCurrentSkyTopGreen/255.0f,
+													  (float)Timecycle->m_nCurrentSkyTopBlue/255.0f,
+													  1.0f));
+	m_pEffect->SetFloat("fCloudCover",Timecycle->m_fAlpha1/255.0f);
+	m_pEffect->SetFloat("fCloud1Transp",Timecycle->m_fCloudAlpha1/255.0f);
 	m_pEffect->SetMatrix("gmWorldViewProj",&gm_WorldViewProjection);
 	m_pEffect->SetMatrix("gmWorld",&gm_World);
 	m_pEffect->Begin(&passes,0);
@@ -81,11 +91,7 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 	skySphere->DrawSubset(0);
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
-	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
-	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
-	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
-	g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
+	SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }
 void CSkyRender::Release()
 {

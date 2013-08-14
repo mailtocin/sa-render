@@ -60,6 +60,7 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 	// Render of meshes
 	for(unsigned int i = 0; i < repEntry->header.numMeshes; i++)
 	{
+		rwD3D9RenderStateVertexAlphaEnable(mesh->vertexAlpha || mesh->material->color.alpha != 255);
 		vehicleColor.r = (float)mesh->material->color.red / 255.0f;
 		vehicleColor.g = (float)mesh->material->color.green / 255.0f;
 		vehicleColor.b = (float)mesh->material->color.blue / 255.0f;
@@ -76,6 +77,8 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 				mesh->startIndex, mesh->numPrimitives);
 			m_pEffect->EndPass();
 		}
+		else
+			rwD3D9DrawPrimitive(repEntry->header.primType, mesh->baseIndex, mesh->numPrimitives);
 		m_pEffect->End();
 		mesh++;
 	}
