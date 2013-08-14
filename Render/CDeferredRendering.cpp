@@ -10,8 +10,8 @@
 #include <sstream>
 
 // Shadows textures/surfaces
-IDirect3DTexture9 *CDeferredRendering::shadow[4];
-IDirect3DSurface9 *CDeferredRendering::shadowSurface[4];
+IDirect3DTexture9 *CDeferredRendering::shadow[8];
+IDirect3DSurface9 *CDeferredRendering::shadowSurface[8];
 // Geometry Buffer textures/surfaces
 IDirect3DTexture9 *CDeferredRendering::gbuffer[3];
 IDirect3DSurface9 *CDeferredRendering::gbSurface[3];
@@ -29,9 +29,8 @@ int CDeferredRendering::ppTCcount;
 int *CDeferredRendering::surfWidth;
 int *CDeferredRendering::surfHeight;
 // Shadow View/Projection Matrix
-D3DXMATRIX CDeferredRendering::g_mLightView[2];
-D3DXMATRIX CDeferredRendering::g_mLightProj;
-D3DXMATRIX CDeferredRendering::g_mLightProj2;
+D3DXMATRIX CDeferredRendering::g_mLightView[4];
+D3DXMATRIX CDeferredRendering::g_mLightProj[4];
 // Deferred/Post-Process Shader
 ID3DXEffect *CDeferredRendering::m_pEffect;
 // Noise texture for Post-Process
@@ -44,6 +43,8 @@ D3DPRESENT_PARAMETERS *g_D3Dpp = (D3DPRESENT_PARAMETERS *) 0xC9C040;
 float m_fExtraDistance;
 D3DXVECTOR3 *m_vUpVector;
 D3DXVECTOR3 m_vLightDirection;
+float m_faSplitDistances[5];
+float CDeferredRendering::maxShadowDistance = 800;
 
 // Setup function
 bool CDeferredRendering::Setup()
@@ -52,7 +53,7 @@ bool CDeferredRendering::Setup()
 	g_D3Dpp->MultiSampleType = D3DMULTISAMPLE_NONE;
 	ID3DXBuffer *errors;
 	HRESULT result;
-	m_vUpVector = new D3DXVECTOR3(0, 1, 0);
+	m_vUpVector = new D3DXVECTOR3(0, 0, 1);
 	// Loading shader... TODO: Load it from folder...
 	result = D3DXCreateEffectFromFile(g_Device,"deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors, "CDeferredRendering", "deferred", result))	{
@@ -143,7 +144,7 @@ void CDeferredRendering::DrawPostProcessPass() {
 //--------------------------On Lost Device--------------------------------
 void CDeferredRendering::Lost()
 {
-	for(int i = 0;i<4;i++) {
+	for(int i = 0;i<8;i++) {
 		SAFE_RELEASE(shadowSurface[i]);
 		SAFE_RELEASE(shadow[i]);
 	}
@@ -273,28 +274,58 @@ void CDeferredRendering::DrawCubemap(){
 }
 
 //-----------------------Shadow Mapping Function--------------------------
+void CalculateSplitDistances()
+{
+    float fIDM, fLog, fUniform;
+
+    for (int i = 0; i < 4; i++)
+    {
+        fIDM = i / (float)4;
+        fLog = 0.3f * (float)pow((CDeferredRendering::maxShadowDistance / 0.3f), fIDM);
+        fUniform = 0.3f + (CDeferredRendering::maxShadowDistance - 0.3f) * fIDM;
+        m_faSplitDistances[i] = fLog * 0.3f + fUniform * (1.0f - 0.3f);
+    }
+
+    m_faSplitDistances[0] = 0.3f;
+    m_faSplitDistances[4] = CDeferredRendering::maxShadowDistance;
+}
 void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 										  IDirect3DSurface9*shadowSurfaceC,
 										  float distance,D3DXMATRIX*lightview,
 										  D3DXMATRIX*lightproj,float dd)
 {
 	// 1) We need to stop current camera updating to avoid bugs.
-	//RwCameraEndUpdate(Scene->m_pRwCamera);
+	RwCameraEndUpdate(Scene->m_pRwCamera);
+	if(dd==1){
+		RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[0]);
+		RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[1]);
+	} else if(dd==2){
+		RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[1]);
+		RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[2]);
+	} else if(dd==3){
+		RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[2]);
+		RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[3]);
+	} else {
+		RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[3]);
+		RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[4]);
+	}
+	RwCameraBeginUpdate(Scene->m_pRwCamera);
 	// 2) We need to get some values(sun position and player position).
 	RwV3D sunpos;
 	CVector camPos;
-	GetSunPosn(&sunpos,distance);
+	GetSunPosn(&sunpos,1);
 	FindPlayerCoors(&camPos, 0);
 //--------------Some compute code that i don't understand :)-------------
-	m_vLightDirection.x = sunpos.x;
-	m_vLightDirection.y = sunpos.y;
-	m_vLightDirection.z = sunpos.z;
+	m_vLightDirection.x = -sunpos.x;
+	m_vLightDirection.y = -sunpos.y;
+	m_vLightDirection.z = -sunpos.z;
 	float fDistance;
 	float faNear[3];
 	float faFar[3];
 	float faDiff[3]; // 0 = xaxis, 1 = yaxis, 2 = zaxis
 	D3DXVECTOR3 vaAxis[3];
 	D3DXVECTOR3 tmp;
+	D3DXVECTOR3 vCenterPosition = D3DXVECTOR3();
 	int i, k;
 	for (i = 0; i < 3; i++)
 	{
@@ -325,9 +356,13 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	for (i = 0; i < 3; i++)
 	{
 		faDiff[i] = faFar[i] - faNear[i];
+		vCenterPosition += vaAxis[i] * (faNear[i] + faFar[i]);
 	}
+	vCenterPosition *= 0.5f;
+
 	float ZNear = 50.0f;
 	float fLightZFar = faDiff[2] + ZNear;
+	D3DXVECTOR3 vLightPosition = vCenterPosition - vaAxis[2] * (faDiff[2] * 0.5f + ZNear);
 //----------------------------------------------------------------------
 	IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
 
@@ -340,12 +375,10 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	pOldRTSurf->Release();
 	m_pZBuffer->Release();
 	// 4) We need to compute all needed matrix's.
-	D3DXMatrixLookAtLH(lightview,&D3DXVECTOR3(camPos.x+(sunpos.x),
-											  camPos.y+(sunpos.y),
-											  camPos.z+(sunpos.z)),
-								 &D3DXVECTOR3(camPos.x,camPos.y,camPos.z),
-								 &D3DXVECTOR3(0,1,0));
-	D3DXMatrixOrthoLH(lightproj,faDiff[0]/dd, faDiff[1]/dd, -ZNear, fLightZFar);
+	D3DXMatrixLookAtLH(lightview,&vLightPosition,
+								 &vCenterPosition,
+								 &D3DXVECTOR3(0,0,1));
+	D3DXMatrixOrthoLH(lightproj,faDiff[0], faDiff[1], -ZNear, fLightZFar);
 	// 5) We need to render scene from light position.
 	g_Device->SetRenderTarget(0,shadowSurfaceC);
 	g_Device->SetDepthStencilSurface(shadowSurface);
@@ -365,6 +398,10 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
 	g_Device->SetTransform(D3DTS_VIEW,&view);
 	g_Device->SetTransform(D3DTS_PROJECTION,&proj);
+	RwCameraEndUpdate(Scene->m_pRwCamera);
+	RwCameraSetNearClipPlane(Scene->m_pRwCamera, 0.3f);
+	RwCameraSetFarClipPlane(Scene->m_pRwCamera, Timecycle->m_fCurrentFarClip);
+	RwCameraBeginUpdate(Scene->m_pRwCamera);
 }
 //----------------------------------------------------------------------
 
@@ -438,13 +475,13 @@ void CDeferredRendering::Idle(void *a)
 		CPedsRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CPedsRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
 		
-		for(int i =0;i<4;i+=2){
+		for(int i =0;i<8;i+=2){
 			if(!shadow[i]){
 				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_R5G6B5,D3DPOOL_DEFAULT,&shadow[i],NULL);
 				shadow[i]->GetSurfaceLevel(0,&shadowSurface[i]);
 			}
 		}
-		for(int i =1;i<4;i+=2){
+		for(int i =1;i<8;i+=2){
 			if(!shadow[i]){
 				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_DEPTHSTENCIL,D3DFMT_D24S8,D3DPOOL_DEFAULT,&shadow[i],NULL);
 				shadow[i]->GetSurfaceLevel(0,&shadowSurface[i]);
@@ -473,11 +510,13 @@ void CDeferredRendering::Idle(void *a)
 		D3DXMATRIX view,proj,viewproj,invview,invviewproj;
 		RwV3D camPos;
 		GetSunPosn((CVector*)&CGlobalValues::gm_SunPosition,1000);
-
+		CalculateSplitDistances();
 		FindPlayerCoors(&camPos, 0);
 		//RwCameraBeginUpdate(Scene->m_pRwCamera);
-		ComputeShadowMap(shadowSurface[1],shadowSurface[0],150,&g_mLightView[0],&g_mLightProj,45);
-		ComputeShadowMap(shadowSurface[3],shadowSurface[2],150,&g_mLightView[1],&g_mLightProj2,5);
+		ComputeShadowMap(shadowSurface[1],shadowSurface[0],150,&g_mLightView[0],&g_mLightProj[0],1);
+		ComputeShadowMap(shadowSurface[3],shadowSurface[2],150,&g_mLightView[1],&g_mLightProj[1],2);
+		ComputeShadowMap(shadowSurface[5],shadowSurface[4],150,&g_mLightView[2],&g_mLightProj[2],3);
+		ComputeShadowMap(shadowSurface[7],shadowSurface[6],150,&g_mLightView[3],&g_mLightProj[3],4);
 		//DrawCubemap();
 		//RwCameraEndUpdate(Scene->m_pRwCamera);
 		g_Device->GetTransform(D3DTS_VIEW,&view);
@@ -531,14 +570,16 @@ void CDeferredRendering::Idle(void *a)
 		GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 		g_Device->SetFVF(dwFVF_POST);
 		m_pEffect->SetTechnique("DefShad");
-		D3DXMATRIX m_LightViewProj[2];
+		D3DXMATRIX m_LightViewProj[4];
 		g_Device->SetRenderTarget(0,lightingSurface);
 		//g_Device->SetRenderTarget(0,pOldRTSurf);
 		g_Device->SetRenderTarget(1,NULL);
 		g_Device->SetRenderTarget(2,NULL);
-		D3DXMatrixMultiplyTranspose(&m_LightViewProj[0],&g_mLightView[0],&g_mLightProj);
-		D3DXMatrixMultiplyTranspose(&m_LightViewProj[1],&g_mLightView[1],&g_mLightProj2);
-		m_pEffect->SetMatrixArray("gmLightViewProj",m_LightViewProj,2);
+		D3DXMatrixMultiplyTranspose(&m_LightViewProj[0],&g_mLightView[0],&g_mLightProj[0]);
+		D3DXMatrixMultiplyTranspose(&m_LightViewProj[1],&g_mLightView[1],&g_mLightProj[1]);
+		D3DXMatrixMultiplyTranspose(&m_LightViewProj[2],&g_mLightView[2],&g_mLightProj[2]);
+		D3DXMatrixMultiplyTranspose(&m_LightViewProj[3],&g_mLightView[3],&g_mLightProj[3]);
+		m_pEffect->SetMatrixArray("gmLightViewProj",m_LightViewProj,4);
 		// Set Textures
 		m_pEffect->SetTexture("colorBuffer",gbuffer[0]);
 		m_pEffect->SetTexture("normalSpecBuffer",gbuffer[1]);
@@ -547,6 +588,12 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetTexture("cubemap",cubemap);
 		m_pEffect->SetTexture("test",shadow[1]);
 		m_pEffect->SetTexture("test2",shadow[3]);
+		m_pEffect->SetTexture("test3",shadow[5]);
+		m_pEffect->SetTexture("test4",shadow[7]);
+		m_pEffect->SetVector("g_fSplitDistances",&D3DXVECTOR4(m_faSplitDistances[1],
+															  m_faSplitDistances[2],
+															  m_faSplitDistances[3],
+															  m_faSplitDistances[4]));
 		// ------------
 		cam = *(D3DXVECTOR4*)GetCamPos();
 		m_pEffect->SetVector("vDir",&D3DXVECTOR4(cam.x-camPos.x,cam.y-camPos.y,cam.z-camPos.z,1));

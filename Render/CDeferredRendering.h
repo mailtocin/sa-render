@@ -18,10 +18,9 @@ public:
 	static void CreateShadowCamera();
 	static void ComputeShadowMap(IDirect3DSurface9*shadowSurface,IDirect3DSurface9*shadowSurfaceC,float distance,D3DXMATRIX*lightview,D3DXMATRIX*lightproj,float dd);
 	static void DestroyShadowCamera();
-	static void CalculateSplitDistances(float NearPlane,float FarPlane);
 	static void DrawCubemap();
-	static IDirect3DTexture9 *shadow[4];
-	static IDirect3DSurface9 *shadowSurface[4];
+	static IDirect3DTexture9 *shadow[8];
+	static IDirect3DSurface9 *shadowSurface[8];
 	static IDirect3DTexture9 *gbuffer[3];
 	static IDirect3DSurface9 *gbSurface[3];
 	static IDirect3DTexture9 **rtTmpSurface;
@@ -33,9 +32,9 @@ public:
 	static int *surfHeight;
 	static int ppTCcount;
 	static RwCamera *m_pShadowCamera;
-	static D3DXMATRIX g_mLightView[2];
-	static D3DXMATRIX g_mLightProj;
-	static D3DXMATRIX g_mLightProj2;
+	static D3DXMATRIX g_mLightView[4];
+	static D3DXMATRIX g_mLightProj[4];
 	static ID3DXEffect *m_pEffect;
 	static bool m_baSplitColorChannels[4][4];
+	static float maxShadowDistance;
 };

@@ -1,4 +1,4 @@
-#include "helpers.fxh"
+//#include "helpers.fxh"
 texture2D colorBuffer;
 texture2D lightBuffer;
 texture2D screenBuffer_0 < int width = -1; int height = -1; >;
@@ -19,6 +19,8 @@ texture2D shadowDepthBuffer;
 texture2D noise;
 texture2D test;
 texture2D test2;
+texture2D test3;
+texture2D test4;
 textureCUBE cubemap;
 float3 lightDirection;
 float4 sLP;
@@ -31,11 +33,13 @@ float4x4 gmViewInv;
 float3x3 gmView;
 float4x4 gmViewProjInv;
 float4x4 gmWorld;
-float4x4 gmLightViewProj[2];
+float4x4 gmLightViewProj[4];
 float4 SunColor;
 float4 gvAmbientColor;
 float4 gvAmbientColor2;
 float PointLightRange;
+float ScreenSizeX;
+float ScreenSizeY;
 float3 PointLightColor;
 int PostProcessCount = 8;
 sampler2D colorGBUFF = sampler_state
@@ -222,6 +226,28 @@ sampler2D test2Sampler = sampler_state
 	AddressW = Border;
 	BorderColor = 0xFFFFFF;
 };
+sampler2D test3Sampler = sampler_state
+{
+	Texture = <test3>;
+	MinFilter = LINEAR;  
+	MagFilter = LINEAR;
+	MipFilter = None;
+	AddressU = Border;
+	AddressV = Border;
+	AddressW = Border;
+	BorderColor = 0xFFFFFF;
+};
+sampler2D test4Sampler = sampler_state
+{
+	Texture = <test4>;
+	MinFilter = LINEAR;  
+	MagFilter = LINEAR;
+	MipFilter = None;
+	AddressU = Border;
+	AddressV = Border;
+	AddressW = Border;
+	BorderColor = 0xFFFFFF;
+};
 samplerCUBE cubemapSampler = sampler_state
 {
    Texture = <cubemap>;
@@ -250,298 +276,37 @@ VS_OUTPUT_POST mainVS(VS_INPUT_POST IN) {
 	OUT.ViewRay = gmViewInv[2].xyz;
 	return OUT;
 }
-float3 HDRHable(float3 texColor,float _ExposureAdjustment)
-{
-	const float A = 0.15;
-	const float B = 0.50;
-	const float C = 0.10;
-	const float D = 0.20;
-	const float E = 0.02;
-	const float F = 0.30;
-	const float W = 11.2;
-	
-	texColor *= _ExposureAdjustment;
 
-	float ExposureBias = 2.0;
-	float3 x = ExposureBias*texColor;
-	float3 curr = ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
-	
-	x = W;
-	float3 whiteScale = 1.0f/(((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F);
-	float3 color = curr*whiteScale;
-
-	// float3 retColor = pow(color,1/2.2); // we have SRGB write enabled at this stage
-
-	return color;		
-}
-float3 sampleblurred(float2 uvsrc)
-{
-	float2	offset=(1/1024);
-	offset.y*=(1024/768);
-	float	res;
-	res =tex2D(shadGBUFF, uvsrc).y;
-	res+=tex2D(shadGBUFF, uvsrc+float2( offset.x, offset.y)).y;
-	res+=tex2D(shadGBUFF, uvsrc+float2(-offset.x,-offset.y)).y;
-	res+=tex2D(shadGBUFF, uvsrc+float2(-offset.x, offset.y)).y;
-	res+=tex2D(shadGBUFF, uvsrc+float2( offset.x,-offset.y)).y;
-	return res.xxx*0.2;
-}
-float3 bloom(float2 uvsrc)
-{
-	float3	res;
-	for (int y=-2; y<2; y++){
-		for (int x=-2; x<2; x++){
-			res +=max(tex2Dlod(colorGBUFF, float4(uvsrc+(float2(x,y)/((1024+768)/2)),0,2)).xyz-0.8,0.0f);
-		}
-	}
-	return res.xyz/8;
-}
-float3 LensBlur(const sampler2D Tex, float2 texCoord,float max_radius) {  
-  
-    float3 outColor = float3(0.0,0.0,0.0);
-	float weight = 0.0;
-	for (float i = -max_radius; i < max_radius; i++)
-		{
-			for (int j = -max_radius; j < max_radius; j++)   
-			{
-				outColor += tex2D(Tex,texCoord.xy + float2(i*0.0003125*max_radius,j*0.0003125*max_radius)).xyz;  
-				weight++;   
-			}
-		}
-    return outColor/weight;  
-}
-float3 LensBlur3(const sampler2D Tex, float2 texCoord,float max_radius) {  
-  
-    float3 outColor = float3(0.0,0.0,0.0);
-	float weight = 0.0;
-	for (float x = -max_radius; x < max_radius; x++)
-		{
-			for (float y = -max_radius; y < max_radius; y++)   
-			{
-				float2 coord = texCoord.xy+float2(x/512.0,y/512.0);
-				if(distance(coord, texCoord.xy) < max_radius){
-					float3 texel = tex2D(Tex, coord).xyz;  
-					float w = length(texel.rgb)+0.1;  
-					weight+=w;  
-					outColor += texel*w;
-				}
-			}
-		}
-    return outColor/weight;  
-}
-float3 LensBlur2(const sampler2D Tex, float2 texCoord,float max_radius) {  
-	float  aspectratio   = 1024.0f/768.0f;
-    float2 aspectcorrect = float2(1.0,aspectratio);
-	float2 blur = float2 (0.005*max_radius,0.005*max_radius);
-	
-    float3 outColor = float3(0.0,0.0,0.0);
-	outColor += tex2D(Tex, texCoord.xy).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.0,0.4 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.15,0.37 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.29,0.29 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.37,0.15 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.4,0.0 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.37,-0.15 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.29,-0.29 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.15,-0.37 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.0,-0.4 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.15,0.37 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.29,0.29 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.37,0.15 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.4,0.0 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.37,-0.15 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.29,-0.29 )*aspectcorrect) * blur).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.15,-0.37 )*aspectcorrect) * blur).xyz;
-	//
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.15,0.37 )*aspectcorrect) * blur*0.9).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.37,0.15 )*aspectcorrect) * blur*0.9).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.37,-0.15 )*aspectcorrect) * blur*0.9).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.15,-0.37 )*aspectcorrect) * blur*0.9).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.15,0.37 )*aspectcorrect) * blur*0.9).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.37,0.15 )*aspectcorrect) * blur*0.9).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.37,-0.15 )*aspectcorrect) * blur*0.9).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.15,-0.37 )*aspectcorrect) * blur*0.9).xyz;
-	//
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.29,0.29 )*aspectcorrect) * blur*0.7).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.4,0.0 )*aspectcorrect) * blur*0.7).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.29,-0.29 )*aspectcorrect) * blur*0.7).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.0,-0.4 )*aspectcorrect) * blur*0.7).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.29,0.29 )*aspectcorrect) * blur*0.7).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.4,0.0 )*aspectcorrect) * blur*0.7).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.29,-0.29 )*aspectcorrect) * blur*0.7).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.0,0.4 )*aspectcorrect) * blur*0.7).xyz;
-	//
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.29,0.29 )*aspectcorrect) * blur*0.4).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.4,0.0 )*aspectcorrect) * blur*0.4).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.29,-0.29 )*aspectcorrect) * blur*0.4).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.0,-0.4 )*aspectcorrect) * blur*0.4).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.29,0.29 )*aspectcorrect) * blur*0.4).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.4,0.0 )*aspectcorrect) * blur*0.4).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( -0.29,-0.29 )*aspectcorrect) * blur*0.4).xyz;
-	outColor += tex2D(Tex, texCoord.xy + (float2( 0.0,0.4 )*aspectcorrect) * blur*0.4).xyz;
-	
-    return outColor/41;  
-}
-float3 PS_Process(float3 origcolor,float2 texcoord)
-{
-	float3	res;
-
-	float3	lenz=0;
-	float2	lenzuv=0.0;
-	//deepness, curvature, inverse size
-	const float3 offset[15]=
- {
-  float3(0.3, 0.01, 4),
-  float3(0.7, 0.25, 25),
-  float3(0.3, 0.25, 15),
-// Full
-  float3(1, 1.0, 5),
-// Arriere
-  float3(-0.15, 20, 1),
-  float3(-0.3, 20, 1),
-// Avant
-  float3(0.5, 0.1, 1),
-  float3(0.01, 10, 1),
-  float3(20, 0.25, 1),
-  float3(1000, 5, 100),
-//Plein ecran passe inverse
-  float3(0.5, -0.5, 2),
-//Rond bleu du debut
-  float3(2, 2, -5),
-//2eme partie de la passe FS
-  float3(-5, 0.2, 0.2),
-//Derniere passe
-  float3(0.15, 0.5, 20),
-  float3(0.4, 1, 10)
- };
-
- const float3 factors[15]=
- {
-  float3(0.5, 0.5, 0),
-  float3(0, 0.5, 0),
-  float3(0, 0, 0.5),
-// Full
-  float3(0.2, 0.25, 0),
-// Arriere
-  float3(0.15, 0, 0.0),
-  float3(0, 0.0, 0.15),
-// Avant
-  float3(0.2, 0.2, 0.05),
-  float3(0.25, 0.25, 0.25),
-  float3(1, 1, 1),
-  float3(0, 0.25, 1),
-//Plein ecran
-  float3(0, 0,0.25),
-//Rond bleu au debut
-  float3(0, 0, 1),
-//Derniere passe avec passe full combine
-  float3(2, 2, 2),
-  float3(1, 1, 0.25),
-  float3(0, 0, 0)
-
- };
-	for (int i=0; i<15; i++)
-	{
-		float2 distfact=(texcoord.xy-0.5);
-		lenzuv.xy=offset[i].x*distfact;
-		lenzuv.xy*=pow(2.0*length(float2(distfact.x*(1024/768),distfact.y)), offset[i].y);
-		lenzuv.xy*=offset[i].z;
-		lenzuv.xy=0.5-lenzuv.xy;
-		float3 templenz=LensBlur(shadGBUFF,lenzuv.xy,1).yyy;
-		templenz=templenz*factors[i];
-		distfact=(lenzuv.xy-0.5);
-		distfact*=2.0;
-		templenz*=saturate(1.0-dot(distfact,distfact));
-		float maxlenz=max(templenz.x, max(templenz.y, templenz.z));
-		float tempnor=(maxlenz/(1.0+maxlenz));
-		tempnor=pow(tempnor, 2);
-		templenz.xyz*=tempnor;
-		lenz+=templenz;
-	}
-	//lenz.xyz/=4;
-
-	res.xyz=origcolor + lenz*4;
-	return res;
-}
-float3 SunRays(float3 origcolor,float2 texcoord)
-{
-	float3 res;
-	float4 lightPos = mul(sLP, gmViewProj);
-	lightPos /=lightPos.w;
-	lightPos.x = 0.5f + lightPos.x / 2.0f;
-	lightPos.y = 1.0f - (0.5f + lightPos.y / 2.0f);	
-	float2 screenLightPos = lightPos.xy;
-	float2 texCoord = texcoord;
-	half2 deltaTexCoord = (texCoord.xy - screenLightPos.xy);
-	deltaTexCoord *= 1.0f / 64 * 1.0;
-	half3 color = saturate(tex2D(shadGBUFF, texCoord).yyy)*tex2D(noiseSampler, texCoord*5).xxx;
-	half illuminationDecay = 1.0f;
-	for (int i = 0; i < 64; i++)  
-	{
-		// Step sample location along ray.  
-		texCoord -= deltaTexCoord;  
-		// Retrieve sample at new location.  
-	    half3 sample = saturate(tex2D(shadGBUFF, texCoord).y)*tex2D(noiseSampler, texCoord*5).x;  
-		// Apply sample attenuation scale/decay factors.
-
-		sample *= illuminationDecay * 1.0;  
-		// Accumulate combined color.  
-		color += sample;  
-		// Update exponential decay factor.  
-		illuminationDecay *= 0.9;  
-	}
-	res.xyz=origcolor + saturate(color)*SunColor;
-	return res;
-}
-float3 fragPhotographic(float3 texColor)
-{
-	return 1-exp2(-3.3 * texColor);
-}
-float3 VSPositionFromDepth(float2 vTexCoord)
-{
-    // Get the depth value for this pixel
-    float z = tex2D(shadGBUFF, vTexCoord).z;  
-    // Get x/w and y/w from the viewport position
-    float x = vTexCoord.x * 2 - 1;
-    float y = (1 - vTexCoord.y) * 2 - 1;
-    float4 vProjectedPos = float4(x, y, z, 1.0f);
-    // Transform by the inverse projection matrix
-    float4 vPositionVS = mul(vProjectedPos, gmInvProj);  
-    // Divide by w to get the view-space position
-    return vPositionVS.xyz / vPositionVS.w;  
-}
-
-float3 getWSPos(float2 texcoord,float3 ViewRay){
-	float3 viewRay = normalize(ViewRay);
-	float viewDistance = tex2D(shadGBUFF,texcoord).z;
-	return gmViewInv[3].xyz + viewRay * viewDistance;
-}
 float4x4 make_bias_mat(float BiasVal)
 {
-	float fTexWidth = 1024;
-	float fTexHeight = 768;
+	float fTexWidth = ScreenSizeX;
+	float fTexHeight = ScreenSizeY;
 	// float fZScale = pow(2.0,((float)SHAD_BIT_DEPTH))-1.0; // dx8
 	float fZScale = 1.0; //dx9
 	float fOffsetX = 0.5f + (0.5f / fTexWidth);
 	float fOffsetY = 0.5f + (0.5f / fTexHeight);
 	float4x4 result = float4x4(0.5f,     0.0f,     0.0f,      0.0f,
-					0.0f,    -0.5f,     0.0f,      0.0f,
-					0.0f,     0.0f,     fZScale,   0.0f,
-					fOffsetX, fOffsetY, -BiasVal,     1.0f );
+							   0.0f,    -0.5f,     0.0f,      0.0f,
+							   0.0f,     0.0f,     fZScale,   0.0f,
+							   fOffsetX, fOffsetY, BiasVal,     1.0f );
 	return result;
 }
-float2 g_fSplitDistances = {25,1500};
+float4 g_fSplitDistances;
 half GetSplitByDepth(float fDepth)
 {
 	float2 fTest = fDepth > g_fSplitDistances;
 	return dot(fTest, fTest);
 }
-float GetShadow(half fSplitIndex, float4 faSplitUV[2])
+float GetShadow(half fSplitIndex, float4 faSplitUV[4])
 {
 	float fShadow;
-	if(fSplitIndex>=1){
+	if(fSplitIndex>=3) {
+		fShadow = tex2Dproj(test4Sampler, faSplitUV[fSplitIndex]);
+	} else if(fSplitIndex>=2) {
+		fShadow = tex2Dproj(test3Sampler, faSplitUV[fSplitIndex]);
+	} else if(fSplitIndex>=1) {
 		fShadow = tex2Dproj(test2Sampler, faSplitUV[fSplitIndex]);
-	}else{
+	} else {
 		fShadow = tex2Dproj(testSampler, faSplitUV[fSplitIndex]);
 	}
 	return fShadow;
@@ -551,10 +316,10 @@ float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
 	float3 normal = normalSpec.xyz;
 	half  spec = normalSpec.w;
 	float4 WSpos = tex2D(shadGBUFF,IN.texcoord);
-	float4x4 bias_mat = make_bias_mat(0.000018f);
+	float4x4 bias_mat = make_bias_mat(0.0001f);
 	
-	float4 shadow[2];
-	for(int n = 0; n < 2; n++ ){
+	float4 shadow[4];
+	for(int n = 0; n < 4; n++ ){
 		shadow[n] = mul(mul(gmLightViewProj[n],float4(WSpos.xyz,1.0)),bias_mat);
 	}
 	half fSplitIndex = GetSplitByDepth(WSpos.w);
@@ -595,22 +360,13 @@ float4 mainL_PS(VS_OUTPUT_POST IN) : COLOR {
 		return float4(lighting*tex2D(colorGBUFF,IN.texcoord).xyz+(reflColor.xyz*normalSpec.w*tex2D(colorGBUFF,IN.texcoord).xyz),1);
 	}
 }
-float4 PP_PS(VS_OUTPUT_POST IN) : COLOR {
-	float3 outColor = PS_Process(tex2D(normalscreenSampler,IN.texcoord).xyz,IN.texcoord);
-	return float4(outColor,1);
-}
-float4 PP1_PS(VS_OUTPUT_POST IN) : COLOR {
-	float3 outColor = fragPhotographic(tex2D(normalscreenSampler,IN.texcoord).xyz);
-	return float4(outColor,1);
-}
-
 float4 PP2_PS(VS_OUTPUT_POST IN) : COLOR {
 	
 	float totStrength = 1.38;
 	float strength = 0.07;
 	float offset = 18.0;
 	float falloff = 0.000002;
-	float rad = 0.15;
+	float rad = 0.3;
 	const float invSamples = 1.0/16.0;
 	//float3 pSphere[16] = {float3(0.53812504, 0.18565957, -0.43192),float3(0.13790712, 0.24864247, 0.44301823),float3(0.33715037, 0.56794053, -0.005789503),float3(-0.6999805, -0.04511441, -0.0019965635),float3(0.06896307, -0.15983082, -0.85477847),float3(0.056099437, 0.006954967, -0.1843352),float3(-0.014653638, 0.14027752, 0.0762037),float3(0.010019933, -0.1924225, -0.034443386),float3(-0.35775623, -0.5301969, -0.43581226),float3(-0.3169221, 0.106360726, 0.015860917),float3(0.010350345, -0.58698344, 0.0046293875),float3(-0.08972908, -0.49408212, 0.3287904),float3(0.7119986, -0.0154690035, -0.09183723),float3(-0.053382345, 0.059675813, -0.5411899),float3(0.035267662, -0.063188605, 0.54602677),float3(-0.47761092, 0.2847911, -0.0271716)};
 	//const float3 pSphere[8] = {float3(0.24710192, 0.6445882, 0.033550154),float3(0.00991752, -0.21947019, 0.7196721),float3(0.25109035, -0.1787317, -0.011580509),float3(-0.08781511, 0.44514698, 0.56647956),float3(-0.011737816, -0.0643377, 0.16030222),float3(0.035941467, 0.04990871, -0.46533614),float3(-0.058801126, 0.7347013, -0.25399926),float3(-0.24799341, -0.022052078, -0.13399573)};
