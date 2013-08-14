@@ -24,10 +24,10 @@ bool CDebug::CheckForShaderErrors(ID3DXBuffer* errors, char *className, char *sh
 	}
 	if(FAILED(result))
 	{
-		strcpy(message, className);
-		strcat(message, "::Setup : D3DXCreateEffectFromFile() - failed while compiling ");
-		strcat(message, shaderName);
-		strcat(message, ".fx");
+		strcpy_s(message, className);
+		strcat_s(message, "::Setup : D3DXCreateEffectFromFile() - failed while compiling ");
+		strcat_s(message, shaderName);
+		strcat_s(message, ".fx");
 		MessageBox(0, message, 0, 0);
 		return false;
 	}

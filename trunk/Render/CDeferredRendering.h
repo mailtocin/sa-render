@@ -13,6 +13,9 @@ public:
 	// TODO: Move it to CGame module
 	static void Idle(void *);
 	static void RenderScene();
+	static void RenderEffects();
+	static void RenderParticlesType0();
+	// /TODO
 	static void DrawPostProcessPass();
 	static void PostProcess(IDirect3DSurface9 *outSurf);
 	static void CreateShadowCamera();

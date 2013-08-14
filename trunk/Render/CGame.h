@@ -17,6 +17,7 @@
 #include "game\CMatrix.h"
 #include "game\CPlaceable.h"
 #include "game\CVector.h"
+#include "game\CPad.h"
 
 //--------------globals--------------------------------------------------
 #define g_Device (*(IDirect3DDevice9 **)0xC97C28)
@@ -49,6 +50,9 @@
 #define gMirrorsRenderingState (*(unsigned char *)0xC7C728)
 #define flt_8CD4F0 (*(float *)0x8CD4F0)
 #define flt_8CD4EC (*(float *)0x8CD4EC)
+#define gNumCreatedHeliLights (*(unsigned int *)0xC1C96C)
+#define gNumCreatedSearchlights (*(unsigned short *)0xA90830)
+#define gReplayMode (*(unsigned char *)0xA43088)
 
 #define UpdateTimer() ((void (__cdecl *)())0x561B10)()
 #define InitSprite2dPerFrame() ((void (__cdecl *)())0x727350)()
@@ -75,7 +79,7 @@
 #define _RenderScene() ((void (__cdecl *)())0x53DF40)()
 #define RenderPedWeapons() ((void (__cdecl *)())0x732F30)()
 #define sub_53E8D0(unk) ((void (__thiscall *)(void *))0x53E8D0)(unk)
-#define RenderEffects() ((void (__cdecl *)())0x53E170)()
+#define _RenderEffects() ((void (__cdecl *)())0x53E170)()
 #define SetCameraMotionBlurAlpha(camera, alpha) ((void (__thiscall *)(CCamera *, unsigned char))0x50BF80)(camera, alpha)
 #define RenderCameraMotionBlur(camera) ((void (__thiscall *)(CCamera *))0x50B8F0)(camera)
 #define Render2dStuff() ((int (__cdecl *)())0x53E230)()
@@ -113,6 +117,33 @@
 #define RemoveCameraMirror(t) ((void (__thiscall *)(CCamera *))0x51A5A0)(t)
 #define FindPlayerCoors(outPoint, playerIndex) ((void (__cdecl *)(CVector *, int))0x56E010)(outPoint, playerIndex)
 #define rxD3D9DefaultRenderCallback(resEntry, atomic, bClipSphere, flags) ((void (__cdecl *)(RwResEntry *, RpAtomic *, int, int)) 0x756DF0)(resEntry, atomic, bClipSphere, flags)
+/* RenderEffects */
+#define RenderBirds() ((void (__cdecl *)())0x712810)()
+#define RenderSkidmarks() ((void (__cdecl *)())0x720640)()
+#define RenderRopes() ((void (__cdecl *)())0x556AE0)()
+#define RenderGlass() ((void (__cdecl *)())0x71CE20)()
+#define sub_733800() ((void (__cdecl *)())0x733800)()
+#define RenderCoronas() ((void (__cdecl *)())0x6FAEC0)()
+#define RenderWaterCannons() ((void (__cdecl *)())0x729B30)()
+#define sub_6E7760() ((void (__cdecl *)())0x6E7760)()
+#define RenderCloudMasked() ((void (__cdecl *)())0x716C90)()
+#define RenderHighClouds() ((void (__cdecl *)())0x716380)()
+#define SetRenderStatesForSpotLights() ((void (__cdecl *)())0x6C4650)()
+#define RenderHeliLights() ((void (__cdecl *)())0x6C7C50)()
+#define RenderSearchlights() ((void (__cdecl *)())0x493E30)()
+#define ResetRenderStatesForSpotLights() ((void (__cdecl *)())0x6C46E0)()
+#define RenderWeaponEffects() ((void (__cdecl *)())0x742CF0)()
+#define RenderSpecialFX() ((void (__cdecl *)())0x726AD0)()
+#define RenderFogEffect() ((void (__cdecl *)())0x7002D0)()
+#define RenderFirstPersonVehicle() ((void (__cdecl *)())0x553D00)()
+#define RenderPostProcess() ((void (__cdecl *)())0x7046E0)()
+//#define RenderParticles(ptfx, camera, unk) ((void (__thiscall *)(CFx *, RwCamera *, int))0x49E650)(ptfx, camera, unk)
+//#define PtDataRenderParticles(ptdata, camera, unk) ((void (__thiscall *)(void *, RwCamera *, int))0x4A92A0)(ptdata, camera, unk)
+#define GetPad(number) ((CPad *(__cdecl *)(unsigned int))0x53FB70)(number)
+#define FindPlayerPed(number) ((CPed *(__cdecl *)(unsigned int))0x56E210)(number)
+#define RenderWeaponTargetTriangle(ped) ((void (__thiscall *)(CPed *))0x60BA80)(ped)
+/* */
+
 
 // D3D Helpers
 #define SAFE_RELEASE(p) {if(p){(p)->Release();(p)=NULL;}}
@@ -124,8 +155,8 @@ bool Im2DRenderQuad(float x1, float y1, float x2, float y2, float z, float recip
 D3DXMATRIX *GetWorldTransposedMatrix(D3DXMATRIX *out, RwMatrix *world);
 D3DXMATRIX *getWorldViewProj(D3DXMATRIX *out, RwMatrix *world, D3DXMATRIX *viewProj);
 RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX m_View,D3DXMATRIX m_Projection,float screenW,float screenH);
-bool GetCurrentStates(DWORD *oDB,DWORD *oSB,DWORD *oBO,DWORD *oAB,DWORD *oAT);
-bool SetOldStates(DWORD oDB,DWORD oSB,DWORD oBO,DWORD oAB,DWORD oAT);
+HRESULT GetCurrentStates(DWORD *oDB,DWORD *oSB,DWORD *oBO,DWORD *oAB,DWORD *oAT);
+HRESULT SetOldStates(DWORD oDB,DWORD oSB,DWORD oBO,DWORD oAB,DWORD oAT);
 class CGlobalValues
 {
 public:
