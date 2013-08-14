@@ -168,7 +168,7 @@ void CDeferredRendering::Lost()
 void CDeferredRendering::Patch()
 {
 	CPatch::RedirectCall(0x53ECBD, Idle);
-	//CPatch::SetInt(0x53E1A5, 0xC3);
+	CPatch::SetInt(0x53E1A5, 0xC3);
 }
 //------------------------------------------------------------------------
 
