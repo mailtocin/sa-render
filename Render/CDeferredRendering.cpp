@@ -160,6 +160,7 @@ void CDeferredRendering::Lost()
 	}
 	if(m_pEffect)
 		m_pEffect->OnLostDevice();
+	CSkyRender::Release();
 }
 //------------------------------------------------------------------------
 
@@ -167,6 +168,7 @@ void CDeferredRendering::Lost()
 void CDeferredRendering::Patch()
 {
 	CPatch::RedirectCall(0x53ECBD, Idle);
+	//CPatch::SetInt(0x53E1A5, 0xC3);
 }
 //------------------------------------------------------------------------
 
@@ -557,7 +559,7 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
 		sun = D3DXVECTOR4(camPos.x+(CGlobalValues::gm_SunPosition.x),camPos.y+(CGlobalValues::gm_SunPosition.y),camPos.z+(CGlobalValues::gm_SunPosition.z),1);
-		CSkyRender::Render(&sun);
+		//CSkyRender::Render(&sun);
 		RenderScene();
 		RenderPedWeapons();
 //----------------------------------------------------------------------
@@ -726,4 +728,41 @@ void CDeferredRendering::RenderScene()
 		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLBACK);
 	}
 	RenderStencil();*/
+}
+
+void __declspec(naked)CDeferredRendering::RenderParticlesType0()
+{
+	// Fucking particles!
+	__asm mov eax, 0x53E193
+	__asm call eax
+	__asm retn;
+}
+
+void CDeferredRendering::RenderEffects()
+{
+	RenderBirds();        // CBirds::Render
+	RenderSkidmarks();    // CSkidmarks::Render
+	RenderRopes();        // CRopes::Render
+	RenderGlass();        // CGlass::Render
+	sub_733800();
+	RenderCoronas();      // CCoronas::Render
+	RenderParticlesType0();
+	RenderWaterCannons(); // CWaterCannons::Render
+	sub_6E7760();
+	RenderCloudMasked();
+	RenderHighClouds();
+	if(gNumCreatedHeliLights || gNumCreatedSearchlights)
+	{
+		SetRenderStatesForSpotLights();
+		RenderHeliLights();   // CHeliLights::RenderAll
+		RenderSearchlights(); // CSearchlights::RenderAll
+		ResetRenderStatesForSpotLights();
+	}
+	RenderWeaponEffects(); // CWeaponEffects::Render
+	if(gReplayMode != 1 && !GetPad(0)->field_10E) // CReplay::Mode  CPad::GetPad
+		RenderWeaponTargetTriangle(FindPlayerPed(-1));
+	RenderSpecialFX();          // CSpecialFX::Render
+	RenderFogEffect();          // CPointLights::RenderFogEffect
+	RenderFirstPersonVehicle(); // CRenderer::RenderFirstPersonVehicle
+	RenderPostProcess();
 }
