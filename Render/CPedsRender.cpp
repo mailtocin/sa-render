@@ -67,6 +67,7 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 	D3DXMatrixTranspose(&worldtransp,&worldtransp);
 	D3DXMatrixMultiplyTranspose(&vp,&view,&proj);
 	D3DXMatrixMultiply(&worldViewProj,&vp,&worldtransp);
+	rwD3D9RenderStateVertexAlphaEnable(instData->vertexAlpha || instData->material->color.alpha != 255);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
 	m_pEffect->SetMatrix("gmWorld",&world);
 	color.r = (float)instData->material->color.red / 255.0f;
@@ -86,6 +87,11 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 		result = g_Device->DrawIndexedPrimitive((D3DPRIMITIVETYPE)resEntry->primType, instData->baseIndex, 0, instData->numVertices, instData->startIndex, instData->numPrimitives);
 		m_pEffect->EndPass();
 		m_pEffect->End();
+	}
+	else
+	{
+		rwD3D9RenderStateFlushCache();
+		result = g_Device->DrawPrimitive((D3DPRIMITIVETYPE)resEntry->primType, instData->baseIndex, instData->numPrimitives);
 	}
 	SetOldStates(oDB,oSB,oBO,oAB,oAT);
 	return result;

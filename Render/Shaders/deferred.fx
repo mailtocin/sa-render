@@ -1,24 +1,24 @@
+#include "helpers.fxh"
 texture2D colorBuffer;
 texture2D lightBuffer;
-texture2D screenBuffer_0 < int width = 1024; int height = 768; >;
+texture2D screenBuffer_0 < int width = -1; int height = -1; >;
 texture2D screenBuffer_1 < int width = 512; int height = 512; >;
 texture2D screenBuffer_2 < int width = 512; int height = 512; >;
 texture2D screenBuffer_3 < int width = 512; int height = 512; >;
-texture2D screenBuffer_4 < int width = 1024; int height = 768; >;
+texture2D screenBuffer_4 < int width = -1; int height = -1; >;
 texture2D screenBuffer_5 < int width = 256; int height = 256; >;
 texture2D screenBuffer_6 < int width = 256; int height = 256; >;
 texture2D screenBuffer_7 < int width = 256; int height = 256; >;
-texture2D screenBuffer_8 < int width = 1024; int height = 768; >;
+texture2D screenBuffer_8 < int width = -1; int height = -1; >;
 texture2D screenBuffer_9 < int width = 256; int height = 256; >;
 texture2D screenBuffer_10 < int width = 128; int height = 128; >;
 texture2D screenBuffer_11 < int width = 1; int height = 1; >;
-texture2D screenBuffer_12 < int width = 1024; int height = 786; >;
+texture2D screenBuffer_12 < int width = -1; int height = -1; >;
 texture2D normalSpecBuffer;
 texture2D shadowDepthBuffer;
 texture2D noise;
 texture2D test;
 texture2D test2;
-texture2D cloudTex;
 textureCUBE cubemap;
 float3 lightDirection;
 float4 sLP;
@@ -37,7 +37,7 @@ float4 gvAmbientColor;
 float4 gvAmbientColor2;
 float PointLightRange;
 float3 PointLightColor;
-int PostProcessCount = 12;
+int PostProcessCount = 8;
 sampler2D colorGBUFF = sampler_state
 {
    Texture = <colorBuffer>;
@@ -47,20 +47,11 @@ sampler2D colorGBUFF = sampler_state
    AddressU = Wrap;
    AddressV = Wrap;
 };
-sampler2D cloudSampler = sampler_state
-{
-   Texture = <cloudTex>;
-   MinFilter = POINT;
-   MagFilter = POINT;
-   MipFilter = None;
-   AddressU = Wrap;
-   AddressV = Wrap;
-};
 sampler2D lightBUFF = sampler_state
 {
    Texture = <lightBuffer>;
-   MinFilter = POINT;
-   MagFilter = POINT;
+   MinFilter = LINEAR;
+   MagFilter = LINEAR;
    MipFilter = None;
    AddressU = Wrap;
    AddressV = Wrap;
@@ -556,9 +547,9 @@ float GetShadow(half fSplitIndex, float4 faSplitUV[2])
 	return fShadow;
 }
 float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
-	float3 normalSpec = tex2D(nsGBUFF,IN.texcoord).xyz;
-	float3 normal = float3(normalSpec.xy,1);
-	half  spec = normalSpec.z;
+	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
+	float3 normal = normalSpec.xyz;
+	half  spec = normalSpec.w;
 	float4 WSpos = tex2D(shadGBUFF,IN.texcoord);
 	float4x4 bias_mat = make_bias_mat(0.000018f);
 	
@@ -567,7 +558,8 @@ float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
 		shadow[n] = mul(mul(gmLightViewProj[n],float4(WSpos.xyz,1.0)),bias_mat);
 	}
 	half fSplitIndex = GetSplitByDepth(WSpos.w);
-	half lighting = saturate(dot(normalize(lightDirection),normal)).x*GetShadow(fSplitIndex, shadow);
+	
+	half lighting = saturate(dot(normalize(lightDirection-WSpos.xyz),normal)).x*GetShadow(fSplitIndex, shadow);
 	//float3 ambient = lerp(gvAmbientColor2.xyz,gvAmbientColor.xyz,normalize(1-sqrt(1-dot(normal.xy, normal.xy))));
 	//float3 finalColor = (saturate(lighting)*SunColor+0.3)*tex2D(colorGBUFF,IN.texcoord).xyz;
 	//float  fNdotV     = saturate(dot( normal, normalize(gmViewInv[2].xyz)));
@@ -577,8 +569,8 @@ float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
 	return float4(saturate(lighting.xxx),1);
 }
 float4 mainPL_PS(VS_OUTPUT_POST IN) : COLOR {
-	float3 normalSpec = tex2D(nsGBUFF,IN.texcoord).xyz;
-	float3 normal = float3(normalSpec.xy,1);
+	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
+	float3 normal = normalSpec.xyz;
 	float3 WSpos = tex2D(shadGBUFF,IN.texcoord).xyz;
 	float3 lightVec = (sLP-WSpos.xyz);
 	float lengt = length(lightVec);
@@ -587,15 +579,21 @@ float4 mainPL_PS(VS_OUTPUT_POST IN) : COLOR {
 	half3 r    = reflect ( -normalize(IN.ViewRay), normal );
 	float spec = pow(max(0,dot(lightVec,r)),65.0);
 	half lighting = max(dot(lightVec,normal),0.0).x;
-	return float4(saturate(lighting.xxx*atten*PointLightColor),1);
+	return float4(saturate(lighting.xxx*atten*PointLightColor),spec);
 }
 float4 mainL_PS(VS_OUTPUT_POST IN) : COLOR {
-	float3 lighting = tex2D(lightBUFF,IN.texcoord).xyz+0.1;
-	float3 normalSpec = tex2D(nsGBUFF,IN.texcoord).xyz;
-	float3 normal = float3(normalSpec.xy,1);
+	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
+	float d = tex2D(colorGBUFF,IN.texcoord).w;
+	float3 normal = normalSpec.xyz;
+	float3 ambient = lerp(gvAmbientColor2.xyz,gvAmbientColor.xyz,(normal.z));
+	float3 lighting = tex2D(lightBUFF,IN.texcoord).xyz+(0.3*ambient);
 	float3 refvect = reflect(normalize(IN.ViewRay),normal);
 	float4 reflColor = texCUBE(cubemapSampler,refvect.xyz);
-	return float4(lighting*tex2D(colorGBUFF,IN.texcoord).xyz+(reflColor.xyz*normalSpec.z*tex2D(colorGBUFF,IN.texcoord).xyz),1);
+	if(d > 1){
+		return float4(tex2D(colorGBUFF,IN.texcoord).xyz,1);
+	} else {
+		return float4(lighting*tex2D(colorGBUFF,IN.texcoord).xyz+(reflColor.xyz*normalSpec.w*tex2D(colorGBUFF,IN.texcoord).xyz),1);
+	}
 }
 float4 PP_PS(VS_OUTPUT_POST IN) : COLOR {
 	float3 outColor = PS_Process(tex2D(normalscreenSampler,IN.texcoord).xyz,IN.texcoord);
@@ -637,7 +635,7 @@ float4 PP2_PS(VS_OUTPUT_POST IN) : COLOR {
 	  float3(0.8116179,0.7803779,-0.9776397),
 	};
 	float3 fres = normalize((tex2D(noiseSampler,512*IN.texcoord/64).xyz*2.0) - 1.0);
-	float3 normal = float3(tex2D(nsGBUFF,IN.texcoord).xy,1);
+	float3 normal = tex2D(nsGBUFF,IN.texcoord).xyz;
 	float currentPixelDepth = tex2D(shadGBUFF,IN.texcoord).w;
 	float3 ep = float3(IN.texcoord.xy,currentPixelDepth);
 	
@@ -657,7 +655,7 @@ float4 PP2_PS(VS_OUTPUT_POST IN) : COLOR {
 	  float2 offset = ray.xy * radD;
 	  float sD = currentPixelDepth - (ray.z * rad);
 	  
-	  occluderFragment = float3(tex2D(nsGBUFF,ep.xy + offset).xy,1);
+	  occluderFragment = tex2D(nsGBUFF,ep.xy + offset).xyz;
 	  // if depthDifference is negative = occluder is behind current fragment
 	  depthDifference = saturate(currentPixelDepth-(tex2D(shadGBUFF,ep.xy + offset).w));
 	  
@@ -771,76 +769,6 @@ float4 fragAdaptive(VS_OUTPUT_POST IN) : COLOR
 	
 	//color.rgb = FromCIE(cie);		
 	return color;
-}
-struct Deferred_OUT
-{
-    float4 col0      : COLOR0;
-    float4 col1 	 : COLOR1;
-	float4 col2 	 : COLOR2;
-	//float4 col3 	 : COLOR3;
-};
-
-struct VS_INPUT
-{
-    float4 pos      : POSITION;
-};
-struct VS_OUTPUT
-{
-    float4 vpos     : POSITION;
-};
-
-VS_OUTPUT sunVS(VS_INPUT IN)
-{
-    VS_OUTPUT OUT;
-    OUT.vpos=mul(gmWorldViewProj,float4(IN.pos.xyz,1.0));
-    return OUT;
-}
-
-Deferred_OUT sunPS(VS_OUTPUT IN) {
-	Deferred_OUT OUT;
-	OUT.col0 = float4(1,1,1,1);
-	OUT.col1.xy = float2(1,1);
-	OUT.col1.z = 1;
-	OUT.col1.w = 1;
-	OUT.col2 = float4(1,1,1,1);
-	return OUT;
-}
-
-struct VS_SKY_INPUT
-{
-    float4 pos      : POSITION;
-	float3 normal   : NORMAL;
-	float2 tex      : TEXCOORD0;
-};
-struct VS_SKY_OUTPUT
-{
-    float4 vpos     : POSITION;
-	float3 normal   : TEXCOORD0;
-	float2 tex      : TEXCOORD1;
-};
-
-VS_SKY_OUTPUT skyVS(VS_SKY_INPUT IN)
-{
-    VS_SKY_OUTPUT OUT;
-	float3 wpos = mul(IN.pos,gmWorld).xyz;
-    OUT.vpos=mul(gmWorldViewProj,float4(IN.pos.xyz,1.0));
-	OUT.normal = IN.pos.xyz;
-	OUT.tex=IN.tex;
-    return OUT;
-}
-
-Deferred_OUT skyPS(VS_SKY_OUTPUT IN) {
-	Deferred_OUT OUT;
-	half sunInfluence = dot( normalize(lightDirection.xyz),normalize( IN.normal.xyz ) )*0.25+0.75;
-	sunInfluence *= saturate( normalize(lightDirection.z) * 4.0 ) * 0.666 + 0.333;
-	sunInfluence = pow(saturate(sunInfluence),720.0f);
-	OUT.col0 = float4(0.3,0.3,1,1)*(1-tex2D(cloudSampler,IN.tex*5).z)+(tex2D(cloudSampler,IN.tex*5).z*0.5);
-	OUT.col1.xy = float2(1,1);
-	OUT.col1.z = 0;
-	OUT.col1.w = 1;
-	
-	OUT.col2 = float4(0,0,0,1);
-	return OUT;
 }
 
 technique DefShad {
@@ -1037,18 +965,5 @@ technique PostProcess_11 {
 		AlphaBlendEnable=FALSE;
 		FogEnable=FALSE;
 		SRGBWRITEENABLE=FALSE;
-	}
-};
-technique sun {
-	pass p0 {
-		VertexShader = compile vs_3_0 sunVS();
-		PixelShader  = compile ps_3_0 sunPS();
-	}
-};
-technique sky {
-	pass p0 {
-		VertexShader = compile vs_3_0 skyVS();
-		PixelShader  = compile ps_3_0 skyPS();
-		cullmode = none;
 	}
 };

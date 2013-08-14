@@ -80,6 +80,7 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	D3DXCOLOR color;
 	D3DXMATRIX vp,worldTransposedMatrix,worldViewProj,world;
 	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
+	rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		CRender::SetTextureMaps((STexture*)g_DefaultRender_ResEntry->meshData.material->texture,m_pEffect);
 	}
@@ -134,6 +135,7 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	D3DXCOLOR color;
 	D3DXMATRIX vp,worldViewProj,world;
 	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
+	rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		CRender::SetTextureMaps((STexture*)g_DefaultRender_ResEntry->meshData.material->texture,m_pEffect);
 	}
@@ -184,6 +186,7 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 	for(unsigned int i = 0; i < repEntry->header.numMeshes; i++)
 	{
 		mat = mesh->material;
+		rwD3D9RenderStateVertexAlphaEnable(mesh->vertexAlpha || mat->color.alpha != 255);
 		color.r = (float)mat->color.red / 255.0f;
 		color.g = (float)mat->color.green / 255.0f;
 		color.b = (float)mat->color.blue / 255.0f;
@@ -198,6 +201,8 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 			rwD3D9DrawIndexedPrimitive(header->primType, mesh->baseIndex, 0, mesh->numVertices, mesh->startIndex, mesh->numPrimitives);
 			m_pEffect->EndPass();
 		}
+		else
+			rwD3D9DrawPrimitive(header->primType, mesh->baseIndex, mesh->numPrimitives);
 		m_pEffect->End();
 		++mesh;
 	}
