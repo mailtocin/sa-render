@@ -19,7 +19,7 @@ public:
 	static void DrawPostProcessPass();
 	static void PostProcess(IDirect3DSurface9 *outSurf);
 	static void CreateShadowCamera();
-	static void ComputeShadowMap(IDirect3DSurface9*shadowSurface,IDirect3DSurface9*shadowSurfaceC,float distance,D3DXMATRIX*lightview,D3DXMATRIX*lightproj,float dd);
+	static void ComputeShadowMap(IDirect3DSurface9*shadowSurface,IDirect3DSurface9*shadowSurfaceC,float distance,D3DXMATRIX*lightview,D3DXMATRIX*lightproj,int cascadeNum);
 	static void DestroyShadowCamera();
 	static void DrawCubemap();
 	static IDirect3DTexture9 *shadow[8];
