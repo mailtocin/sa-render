@@ -83,6 +83,7 @@
     <ClCompile Include="CDebug.cpp" />
     <ClCompile Include="CDeferredRendering.cpp" />
     <ClCompile Include="CGame.cpp" />
+    <ClCompile Include="CGrassRender.cpp" />
     <ClCompile Include="CImmediateRender.cpp" />
     <ClCompile Include="CNormalsGenerator.cpp" />
     <ClCompile Include="CObjectRender.cpp" />
@@ -99,6 +100,7 @@
     <ClInclude Include="CDebug.h" />
     <ClInclude Include="CDeferredRendering.h" />
     <ClInclude Include="CGame.h" />
+    <ClInclude Include="CGrassRender.h" />
     <ClInclude Include="CImmediateRender.h" />
     <ClInclude Include="CNormalsGenerator.h" />
     <ClInclude Include="CObjectRender.h" />

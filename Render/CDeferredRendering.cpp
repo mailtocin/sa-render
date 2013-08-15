@@ -44,7 +44,8 @@ float m_fExtraDistance;
 D3DXVECTOR3 *m_vUpVector;
 D3DXVECTOR3 m_vLightDirection;
 float m_faSplitDistances[5];
-float CDeferredRendering::maxShadowDistance = 800;
+float CDeferredRendering::maxShadowDistance = 500;
+D3DXVECTOR3 m_vaFrustumCorners[8];
 
 // Setup function
 bool CDeferredRendering::Setup()
@@ -160,7 +161,6 @@ void CDeferredRendering::Lost()
 	}
 	if(m_pEffect)
 		m_pEffect->OnLostDevice();
-	CSkyRender::Release();
 }
 //------------------------------------------------------------------------
 
@@ -283,34 +283,80 @@ void CalculateSplitDistances()
     for (int i = 0; i < 4; i++)
     {
         fIDM = i / (float)4;
-        fLog = 0.3f * (float)pow((CDeferredRendering::maxShadowDistance / 0.3f), fIDM);
-        fUniform = 0.3f + (CDeferredRendering::maxShadowDistance - 0.3f) * fIDM;
+        fLog = Scene->m_pRwCamera->nearPlane * (float)pow((Timecycle->m_fCurrentFarClip / Scene->m_pRwCamera->nearPlane), fIDM);
+        fUniform = Scene->m_pRwCamera->nearPlane + (Timecycle->m_fCurrentFarClip - Scene->m_pRwCamera->nearPlane) * fIDM;
         m_faSplitDistances[i] = fLog * 0.3f + fUniform * (1.0f - 0.3f);
     }
 
-    m_faSplitDistances[0] = 0.3f;
-    m_faSplitDistances[4] = CDeferredRendering::maxShadowDistance;
+  //m_faSplitDistances[0] = 0.1f;
+  //m_faSplitDistances[4] = CDeferredRendering::maxShadowDistance;
+	m_faSplitDistances[0] = Scene->m_pRwCamera->nearPlane;
+    m_faSplitDistances[1] = Scene->m_pRwCamera->nearPlane + 25.0f;
+    m_faSplitDistances[2] = m_faSplitDistances[1] + (Timecycle->m_fCurrentFarClip - m_faSplitDistances[1]) * 0.3f;
+    m_faSplitDistances[3] = m_faSplitDistances[1] + (Timecycle->m_fCurrentFarClip - m_faSplitDistances[1]) * 0.6f;
+    m_faSplitDistances[4] = Timecycle->m_fCurrentFarClip;
+}
+void CalculateFrustumCorners(float fNear, float fFar)
+{
+    float fScale, fNearPlaneHeight, fNearPlaneWidth, fFarPlaneHeight, fFarPlaneWidth;
+    D3DXVECTOR3 vCenter = D3DXVECTOR3(), vFarPlaneCenter, vNearPlaneCenter;
+    D3DXVECTOR3 vSource, vTarget, vZ, vX, vY;
+
+    // TVCamera.GetFrustumPoints() is not an option, since we
+    // only compute the frustum corners for a single split,
+    // not for the whole frustum. Changing the planes of the TVCamera
+    // could work, but I haven't tested this.. since this is working fine :)
+    vSource = D3DXVECTOR3(Scene->m_pRwCamera->object.object.parent->ltm.pos.x,
+						  Scene->m_pRwCamera->object.object.parent->ltm.pos.y,
+						  Scene->m_pRwCamera->object.object.parent->ltm.pos.z);
+    vTarget = D3DXVECTOR3(Scene->m_pRwCamera->object.object.parent->ltm.at.x,
+						  Scene->m_pRwCamera->object.object.parent->ltm.at.y,
+						  Scene->m_pRwCamera->object.object.parent->ltm.at.z);
+	D3DXVec3Normalize(&vZ,&(vTarget - vSource));
+	D3DXVec3Cross(&vX,m_vUpVector,&vZ);
+	D3DXVec3Normalize(&vX,&vX);
+	D3DXVec3Cross(&vY,&vZ,&vX);
+
+    fNearPlaneHeight = (float)tan((gfFOV * 0.0087266462f) * 0.5f) * fNear;
+    fNearPlaneWidth = fNearPlaneHeight * 1.0;
+
+    fFarPlaneHeight = (float)tan((gfFOV * 0.0087266462f) * 0.5f) * fFar;
+    fFarPlaneWidth = fFarPlaneHeight * 1.0;
+
+    vNearPlaneCenter = vSource + vZ * fNear;
+    vFarPlaneCenter = vSource + vZ * fFar;
+
+    m_vaFrustumCorners[0] = vNearPlaneCenter - vX * fNearPlaneWidth - vY * fNearPlaneHeight;
+    m_vaFrustumCorners[1] = vNearPlaneCenter + vX * fNearPlaneWidth - vY * fNearPlaneHeight;
+    m_vaFrustumCorners[2] = vNearPlaneCenter - vX * fNearPlaneWidth + vY * fNearPlaneHeight;
+    m_vaFrustumCorners[3] = vNearPlaneCenter + vX * fNearPlaneWidth + vY * fNearPlaneHeight;
+    m_vaFrustumCorners[4] = vFarPlaneCenter - vX * fFarPlaneWidth - vY * fFarPlaneHeight;
+    m_vaFrustumCorners[5] = vFarPlaneCenter + vX * fFarPlaneWidth - vY * fFarPlaneHeight;
+    m_vaFrustumCorners[6] = vFarPlaneCenter - vX * fFarPlaneWidth + vY * fFarPlaneHeight;
+    m_vaFrustumCorners[7] = vFarPlaneCenter + vX * fFarPlaneWidth + vY * fFarPlaneHeight;
+
+    // Increase the scale of the frustum a bit to avoid artefacts near the screen corners.
+    // Start by calculating the center of our frustum points
+    fScale = 1.1f;
+
+    for (int i = 0; i < 8; i++)
+        vCenter += m_vaFrustumCorners[i];
+
+    vCenter /= 8.0f;
+
+    // Finally scale it by adding offset from center
+    for (int i = 0; i < 8; i++)
+        m_vaFrustumCorners[i] += (m_vaFrustumCorners[i] - vCenter) * (fScale - 1.0f);
 }
 void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 										  IDirect3DSurface9*shadowSurfaceC,
 										  float distance,D3DXMATRIX*lightview,
-										  D3DXMATRIX*lightproj,float dd)
+										  D3DXMATRIX*lightproj,int cascadeNum)
 {
 	// 1) We need to stop current camera updating to avoid bugs.
 	RwCameraEndUpdate(Scene->m_pRwCamera);
-	if(dd==1){
-		RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[0]);
-		RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[1]);
-	} else if(dd==2){
-		RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[1]);
-		RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[2]);
-	} else if(dd==3){
-		RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[2]);
-		RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[3]);
-	} else {
-		RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[3]);
-		RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[4]);
-	}
+	RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[cascadeNum-1]);
+	RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[cascadeNum]);
 	RwCameraBeginUpdate(Scene->m_pRwCamera);
 	// 2) We need to get some values(sun position and player position).
 	RwV3D sunpos;
@@ -326,13 +372,13 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	float faFar[3];
 	float faDiff[3]; // 0 = xaxis, 1 = yaxis, 2 = zaxis
 	D3DXVECTOR3 vaAxis[3];
-	D3DXVECTOR3 tmp;
+	D3DXVECTOR3 tmp = D3DXVECTOR3();
 	D3DXVECTOR3 vCenterPosition = D3DXVECTOR3();
 	int i, k;
 	for (i = 0; i < 3; i++)
 	{
 		faNear[i] = FLT_MAX;
-		faFar[i] = FLT_MIN;
+		faFar[i] = -FLT_MAX;
 	}
 	D3DXVec3Normalize(&vaAxis[2],&m_vLightDirection);
 	D3DXVec3Cross(&tmp,m_vUpVector, &vaAxis[2]);
@@ -362,7 +408,7 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	}
 	vCenterPosition *= 0.5f;
 
-	float ZNear = 50.0f;
+	float ZNear = 100.0f;
 	float fLightZFar = faDiff[2] + ZNear;
 	D3DXVECTOR3 vLightPosition = vCenterPosition - vaAxis[2] * (faDiff[2] * 0.5f + ZNear);
 //----------------------------------------------------------------------
@@ -381,6 +427,7 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 								 &vCenterPosition,
 								 &D3DXVECTOR3(0,0,1));
 	D3DXMatrixOrthoLH(lightproj,faDiff[0], faDiff[1], -ZNear, fLightZFar);
+	//D3DXMatrixPerspectiveLH(lightproj,faDiff[0], faDiff[1], -ZNear, fLightZFar);
 	// 5) We need to render scene from light position.
 	g_Device->SetRenderTarget(0,shadowSurfaceC);
 	g_Device->SetDepthStencilSurface(shadowSurface);
@@ -400,10 +447,6 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
 	g_Device->SetTransform(D3DTS_VIEW,&view);
 	g_Device->SetTransform(D3DTS_PROJECTION,&proj);
-	RwCameraEndUpdate(Scene->m_pRwCamera);
-	RwCameraSetNearClipPlane(Scene->m_pRwCamera, 0.3f);
-	RwCameraSetFarClipPlane(Scene->m_pRwCamera, Timecycle->m_fCurrentFarClip);
-	RwCameraBeginUpdate(Scene->m_pRwCamera);
 }
 //----------------------------------------------------------------------
 
@@ -437,7 +480,7 @@ void CDeferredRendering::Idle(void *a)
 	if(FrontEndMenuManager->m_bMenuActive || GetCameraScreenFadeStatus(TheCamera) == 2)
 	{
 		CalculateAspectRatio(); // CDraw::CalculateAspectRatio
-		CameraSize(Scene->m_pRwCamera, 0, tan(gfFOV * 0.0087266462f), gfAspectRatio);
+		CameraSize(Scene->m_pRwCamera, 0, tan(gfFOV * 0.0087266462f), 1.0f);
 		SetRenderWareCamera(Scene->m_pRwCamera); // CVisibilityPlugins::SetRenderWareCamera
 		RwCameraClear(Scene->m_pRwCamera, gColourTop, 2);
 		if(!RsCameraBeginUpdate(Scene->m_pRwCamera))
@@ -476,7 +519,7 @@ void CDeferredRendering::Idle(void *a)
 		CObjectRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
 		CPedsRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CPedsRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
-		
+		RwCameraEndUpdate(Scene->m_pRwCamera);
 		for(int i =0;i<8;i+=2){
 			if(!shadow[i]){
 				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_R5G6B5,D3DPOOL_DEFAULT,&shadow[i],NULL);
@@ -508,6 +551,7 @@ void CDeferredRendering::Idle(void *a)
 				}
 			}
 		}
+		RwCameraBeginUpdate(Scene->m_pRwCamera);
 		IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
 		D3DXMATRIX view,proj,viewproj,invview,invviewproj;
 		RwV3D camPos;
@@ -519,6 +563,10 @@ void CDeferredRendering::Idle(void *a)
 		ComputeShadowMap(shadowSurface[3],shadowSurface[2],150,&g_mLightView[1],&g_mLightProj[1],2);
 		ComputeShadowMap(shadowSurface[5],shadowSurface[4],150,&g_mLightView[2],&g_mLightProj[2],3);
 		ComputeShadowMap(shadowSurface[7],shadowSurface[6],150,&g_mLightView[3],&g_mLightProj[3],4);
+		RwCameraEndUpdate(Scene->m_pRwCamera);
+		RwCameraSetNearClipPlane(Scene->m_pRwCamera, 0.1f);
+		RwCameraSetFarClipPlane(Scene->m_pRwCamera, Timecycle->m_fCurrentFarClip);
+		RwCameraBeginUpdate(Scene->m_pRwCamera);
 		//DrawCubemap();
 		//RwCameraEndUpdate(Scene->m_pRwCamera);
 		g_Device->GetTransform(D3DTS_VIEW,&view);
@@ -527,7 +575,7 @@ void CDeferredRendering::Idle(void *a)
 		D3DXMatrixMultiply(&viewproj,&view,&proj);
 		D3DXMatrixInverse(&invviewproj,NULL,&viewproj);
 		cam = D3DXVECTOR4(camPos.x,camPos.y,camPos.z,1);
-		CSkyRender::PreRender(&cam,&viewproj);
+		//CSkyRender::PreRender(&cam,&viewproj);
 		D3DXCOLOR cc;
 		cc.r = 1;cc.g = 1;cc.b = 1;cc.a = 1;
 
@@ -563,7 +611,7 @@ void CDeferredRendering::Idle(void *a)
 		RenderScene();
 		RenderPedWeapons();
 //----------------------------------------------------------------------
-		CSkyRender::Release();
+		//CSkyRender::Release();
 		DWORD dwOldFVF;
 		DWORD oDB,oSB,oBO,oAB,oAT;
 		const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
@@ -629,8 +677,10 @@ void CDeferredRendering::Idle(void *a)
 		PostProcess(pOldRTSurf);
 		g_Device->SetFVF(dwOldFVF);
 		SetOldStates(oDB,oSB,oBO,oAB,oAT);
-		//RenderWater();
+		DoRWRenderHorizon();
+		RenderWater();
 		//RenderClouds();
+		//RenderGrass();
 		RenderEffects();
 		//sub_53E8D0(g_Unk);
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )
