@@ -1,35 +1,39 @@
 /*
     SA::Render source file
-    PadData structure
+    CControllerState structure
 */
 #pragma once
 
-#pragma pack(push, 1)
-struct PadData
+struct CControllerState
 {
-    short field_0;
-    short field_2;
-    short field_4;
-    short field_6;
-    short field_8;
-    short field_A;
-    short field_C;
-    short field_E;
-    short field_10;
-    short field_12;
-    short field_14;
-    short field_16;
-    short field_18;
-    short field_1A;
-    short field_1C;
-    short field_1E;
-    short field_20;
-    short field_22;
-    short field_24;
-    short field_26;
-    short field_28;
-    short field_2A;
-    short field_2C;
-    short field_2E;
+    signed short LeftStickX;
+    signed short LeftStickY;
+    signed short RightStickX;
+    signed short RightStickY;
+
+    signed short LeftShoulder1;
+    signed short LeftShoulder2;
+    signed short RightShoulder1;
+    signed short RightShoulder2;
+
+    signed short DPadUp;
+    signed short DPadDown;
+    signed short DPadLeft;
+    signed short DPadRight;
+
+    signed short Start;
+    signed short Select;
+
+    signed short ButtonSquare;
+    signed short ButtonTriangle;
+    signed short ButtonCross;
+    signed short ButtonCircle;
+
+    signed short ShockButtonL;
+    signed short ShockButtonR;
+
+    signed short m_bChatIndicated;
+    signed short m_bPedWalk;
+    signed short m_bVehicleMouseLook;
+    signed short m_bRadioTrackSkip;
 };
-#pragma pack(pop)
