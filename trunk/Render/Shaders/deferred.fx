@@ -297,6 +297,24 @@ half GetSplitByDepth(float fDepth)
 	float2 fTest = fDepth > g_fSplitDistances;
 	return dot(fTest, fTest);
 }
+float3 offset_lookup(sampler2D map,
+                     float4 loc,
+                     float2 offset)
+{
+	float2 texmapscale = {1/ScreenSizeX,1/ScreenSizeY};
+	return tex2Dproj(map, float4(loc.xy + offset * texmapscale * loc.w, loc.z, loc.w));
+}
+float sampleShadow(sampler2D shadowmap,float4 shadowCoord){
+	float sum = 0;
+	float x, y;
+
+	for (y = -1.5; y <= 1.5; y += 1.0)
+	  for (x = -1.5; x <= 1.5; x += 1.0)
+		sum += offset_lookup(shadowmap, shadowCoord, float2(x, y));
+
+	return sum / 16.0;
+}
+
 float GetShadow(half fSplitIndex, float4 faSplitUV[4])
 {
 	float fShadow;
@@ -305,9 +323,9 @@ float GetShadow(half fSplitIndex, float4 faSplitUV[4])
 	} else if(fSplitIndex>=2) {
 		fShadow = tex2Dproj(test3Sampler, faSplitUV[fSplitIndex]);
 	} else if(fSplitIndex>=1) {
-		fShadow = tex2Dproj(test2Sampler, faSplitUV[fSplitIndex]);
+		fShadow = sampleShadow(test2Sampler, faSplitUV[fSplitIndex]);
 	} else {
-		fShadow = tex2Dproj(testSampler, faSplitUV[fSplitIndex]);
+		fShadow = sampleShadow(testSampler, faSplitUV[fSplitIndex]);
 	}
 	return fShadow;
 }
