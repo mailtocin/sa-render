@@ -8,13 +8,13 @@
 #pragma pack(push, 1)
 struct CPad
 {
-    PadData padState;
-    PadData prevPadState;
+    CControllerState padState;
+    CControllerState prevPadState;
     short field_60[10];
     int field_74;
-    PadData padStateKbd1;
-    PadData padStateKbd2;
-    PadData field_D8;
+    CControllerState padStateKbd1;
+    CControllerState padStateKbd2;
+    CControllerState field_D8;
     char field_108;
     char field_109;
     short field_10A;
