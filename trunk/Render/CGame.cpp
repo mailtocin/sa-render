@@ -120,14 +120,17 @@ D3DXMATRIX *GetWorldTransposedMatrix(D3DXMATRIX *out, RwMatrix *world) {
 	return out;
 }
 D3DXMATRIX *getWorldViewProj(D3DXMATRIX *out, RwMatrix *world, D3DXMATRIX *viewProj) {
- D3DXMATRIX view,proj,worldtransp;
-	GetWorldTransposedMatrix(&worldtransp,world);
-
-   g_Device->GetTransform(D3DTS_VIEW,&view);
-   g_Device->GetTransform(D3DTS_PROJECTION,&proj);
-   D3DXMatrixMultiplyTranspose(viewProj,&view,&proj);
-   D3DXMatrixMultiply(out,viewProj,&worldtransp);
- return out;
+	D3DXMATRIX view,proj,worldtransp;
+	if(world){
+		GetWorldTransposedMatrix(&worldtransp,world);
+	}
+	g_Device->GetTransform(D3DTS_VIEW,&view);
+	g_Device->GetTransform(D3DTS_PROJECTION,&proj);
+	D3DXMatrixMultiplyTranspose(viewProj,&view,&proj);
+	if(world&&out){
+		D3DXMatrixMultiply(out,viewProj,&worldtransp);
+	}
+	return out;
 }
 // Deferred Lighting Optimizations
 RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX m_View,D3DXMATRIX m_Projection,float screenW,float screenH)

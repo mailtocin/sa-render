@@ -66,6 +66,7 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 		vehicleColor.b = (float)mesh->material->color.blue / 255.0f;
 		vehicleColor.a = (float)mesh->material->color.alpha / 255.0f;
 		m_pEffect->SetVector("gvPaintColor", (D3DXVECTOR4 *)&vehicleColor);
+		m_pEffect->SetFloat("gfSpecularFactor", (float)mesh->material->m_pReflection->m_ucIntensity* 0.0039215686f);
 		if(flags & (rpGEOMETRYTEXTURED2|rpGEOMETRYTEXTURED)) {
 			CRender::SetTextureMaps((STexture*)mesh->material->texture,m_pEffect);
 		}

@@ -74,6 +74,7 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 	color.g = (float)instData->material->color.green / 255.0f;
 	color.b = (float)instData->material->color.blue / 255.0f;
 	color.a = (float)instData->material->color.alpha / 255.0f;
+	m_pEffect->SetFloat("gfSpecularFactor", (float)instData->material->m_pReflection->m_ucIntensity* 0.0039215686f);
 	m_pEffect->SetVector("gvColor", (D3DXVECTOR4 *)&color);
 	if (instData->material->texture)
 	{

@@ -11,6 +11,7 @@ float4 gvEye;
 const float4 constdata[224];
 float screenHeight;
 float screenWidth;
+float gfSpecularFactor = 0;
 texture2D shadowTex;
 texture2D gtDiffuse;
 texture2D gtNormals;
@@ -161,8 +162,10 @@ Deferred_OUT DeferredPS(VS_OUTPUT IN)
 	float3   vNormalWorld    = normalize( mul( mTangentToWorld, vNormal ));
 	OUT.col0 = tex2D(gsDiffuse, IN.texcoord.xy)* gvColor;
 	OUT.col1.xyz = vNormalWorld.xyz;
-	OUT.col1.w = tex2D( gsSpecular, IN.texcoord.xy ).x;
-	OUT.col2 = float4(IN.depth.xyz,1);
+	float spec = (tex2D( gsSpecular, IN.texcoord.xy ).x>0)? tex2D( gsSpecular, IN.texcoord.xy ).x*gfSpecularFactor : gfSpecularFactor;
+	OUT.col1.w = spec;
+	OUT.col2 = float4(IN.depth.xyz,IN.texcoord.z);
+	clip(OUT.col0.w);
 	//OUT.col3 = float4(1,1,1,1);
 	return OUT;
 }
