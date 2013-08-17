@@ -1,6 +1,8 @@
 float4x4 gmWorldViewProj;
 float4x4 gmWorld;
 float4 gvColor = float4(1,1,1,1);
+float gfSpecularFactor = 0;
+bool vcol = false;
 texture2D gtDiffuse;
 texture2D gtNormals;
 texture2D gtSpecular;
@@ -137,11 +139,13 @@ Deferred_OUT DeferredPS(VS_DEFERRED_OUTPUT IN)
 	vNormal = 2 * vNormal - 1.0;
 	float3x3 mTangentToWorld = transpose( float3x3( IN.tangent, IN.binormal, IN.normal ) );
 	float3   vNormalWorld    = normalize( mul( mTangentToWorld, vNormal ));
-	OUT.col0 = tex2D(gsDiffuse, IN.texcoord.xy) * gvColor;
+	
+	OUT.col0 = tex2D(gsDiffuse, IN.texcoord.xy) * gvColor *(vcol?float4(1,1,1,IN.color.w):1.0f);
 	OUT.col1.xyz = vNormalWorld.xyz;
-	OUT.col1.w = tex2D( gsSpecular, IN.texcoord.xy ).x;
+	float spec = (tex2D( gsSpecular, IN.texcoord.xy ).x>0)? tex2D( gsSpecular, IN.texcoord.xy ).x*gfSpecularFactor : gfSpecularFactor;
+	OUT.col1.w = spec;
 	OUT.col2 = float4(IN.pos.x,IN.pos.y,IN.pos.z,IN.texcoord.z);
-	clip(gvColor.w);
+	clip(OUT.col0.w);
 	return OUT;
 }
 

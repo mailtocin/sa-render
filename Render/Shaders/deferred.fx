@@ -334,7 +334,7 @@ float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
 	float3 normal = normalSpec.xyz;
 	half  spec = normalSpec.w;
 	float4 WSpos = tex2D(shadGBUFF,IN.texcoord);
-	float4x4 bias_mat = make_bias_mat(0.0001f);
+	float4x4 bias_mat = make_bias_mat(0.0003f);
 	
 	float4 shadow[4];
 	for(int n = 0; n < 4; n++ ){

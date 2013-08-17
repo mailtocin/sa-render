@@ -4,6 +4,8 @@
 #include "CVehicleRender.h"
 #include "CObjectRender.h"
 #include "CPedsRender.h"
+#include "CImmediateRender.h"
+#include "CGrassRender.h"
 #include "CLights.h"
 #include "CSkyRender.h"
 #include <stdio.h>
@@ -44,7 +46,7 @@ float m_fExtraDistance;
 D3DXVECTOR3 *m_vUpVector;
 D3DXVECTOR3 m_vLightDirection;
 float m_faSplitDistances[5];
-float CDeferredRendering::maxShadowDistance = 500;
+float CDeferredRendering::maxShadowDistance = 1500;
 D3DXVECTOR3 m_vaFrustumCorners[8];
 
 // Setup function
@@ -292,9 +294,9 @@ void CalculateSplitDistances()
   //m_faSplitDistances[4] = CDeferredRendering::maxShadowDistance;
 	m_faSplitDistances[0] = Scene->m_pRwCamera->nearPlane;
     m_faSplitDistances[1] = Scene->m_pRwCamera->nearPlane + 25.0f;
-    m_faSplitDistances[2] = m_faSplitDistances[1] + (Timecycle->m_fCurrentFarClip - m_faSplitDistances[1]) * 0.3f;
-    m_faSplitDistances[3] = m_faSplitDistances[1] + (Timecycle->m_fCurrentFarClip - m_faSplitDistances[1]) * 0.6f;
-    m_faSplitDistances[4] = Timecycle->m_fCurrentFarClip;
+    m_faSplitDistances[2] = m_faSplitDistances[1] + (CDeferredRendering::maxShadowDistance - m_faSplitDistances[1]) * 0.3f;
+    m_faSplitDistances[3] = m_faSplitDistances[1] + (CDeferredRendering::maxShadowDistance - m_faSplitDistances[1]) * 0.6f;
+    m_faSplitDistances[4] = CDeferredRendering::maxShadowDistance;
 }
 void CalculateFrustumCorners(float fNear, float fFar)
 {
@@ -575,9 +577,9 @@ void CDeferredRendering::Idle(void *a)
 		D3DXMatrixMultiply(&viewproj,&view,&proj);
 		D3DXMatrixInverse(&invviewproj,NULL,&viewproj);
 		cam = D3DXVECTOR4(camPos.x,camPos.y,camPos.z,1);
-		//CSkyRender::PreRender(&cam,&viewproj);
+		CSkyRender::PreRender(&cam,&viewproj);
 		D3DXCOLOR cc;
-		cc.r = 1;cc.g = 1;cc.b = 1;cc.a = 1;
+		cc.r = 0;cc.g = 0;cc.b = 0;cc.a = 1;
 
 		//RwCameraBeginUpdate(Scene->m_pRwCamera);
 //----------------------------------------------------------------------
@@ -587,8 +589,8 @@ void CDeferredRendering::Idle(void *a)
 		g_Device->SetRenderTarget(0,gbSurface[0]);
 		g_Device->SetRenderTarget(1,gbSurface[1]);
 		g_Device->SetRenderTarget(2,gbSurface[2]);
-		//g_Device->Clear(0,NULL,D3DCLEAR_STENCIL||D3DCLEAR_TARGET||D3DCLEAR_ZBUFFER,cc,0,0);
-		RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
+		g_Device->Clear(0,NULL,D3DCLEAR_STENCIL||D3DCLEAR_TARGET||D3DCLEAR_ZBUFFER,cc,1,0);
+		//RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
 		CObjectRender::m_pEffect->SetTechnique("Deferred");
 		CVehicleRender::m_pEffect->SetTechnique("Deferred");
 		CPedsRender::m_pEffect->SetTechnique("Deferred");
@@ -607,11 +609,11 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
 		sun = D3DXVECTOR4(camPos.x+(CGlobalValues::gm_SunPosition.x),camPos.y+(CGlobalValues::gm_SunPosition.y),camPos.z+(CGlobalValues::gm_SunPosition.z),1);
-		//CSkyRender::Render(&sun);
+		CSkyRender::Render(&sun);
 		RenderScene();
 		RenderPedWeapons();
 //----------------------------------------------------------------------
-		//CSkyRender::Release();
+		CSkyRender::Release();
 		DWORD dwOldFVF;
 		DWORD oDB,oSB,oBO,oAB,oAT;
 		const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
@@ -677,12 +679,12 @@ void CDeferredRendering::Idle(void *a)
 		PostProcess(pOldRTSurf);
 		g_Device->SetFVF(dwOldFVF);
 		SetOldStates(oDB,oSB,oBO,oAB,oAT);
-		DoRWRenderHorizon();
+		CGrassRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
 		RenderWater();
-		//RenderClouds();
-		//RenderGrass();
+		//CImmediateRender::m_nCurrentRendering = IM_RENDER_GRASS;
+		//CImmediateRender::m_nCurrentRendering = IM_RENDER_NOT_DEFINED;
 		RenderEffects();
-		//sub_53E8D0(g_Unk);
+		sub_53E8D0(g_Unk);
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )
 			SetCameraMotionBlurAlpha(TheCamera, 150); // CCamera::SetMotionBlurAlpha
 		RenderCameraMotionBlur(TheCamera);            // CCamera::RenderMotionBlur
@@ -790,7 +792,7 @@ void __declspec(naked)CDeferredRendering::RenderParticlesType0()
 
 void CDeferredRendering::RenderEffects()
 {
-	RenderBirds();        // CBirds::Render
+	//RenderBirds();        // CBirds::Render
 	RenderSkidmarks();    // CSkidmarks::Render
 	RenderRopes();        // CRopes::Render
 	RenderGlass();        // CGlass::Render
@@ -801,18 +803,18 @@ void CDeferredRendering::RenderEffects()
 	sub_6E7760();
 	RenderCloudMasked();
 	RenderHighClouds();
-	if(gNumCreatedHeliLights || gNumCreatedSearchlights)
-	{
-		SetRenderStatesForSpotLights();
-		RenderHeliLights();   // CHeliLights::RenderAll
-		RenderSearchlights(); // CSearchlights::RenderAll
-		ResetRenderStatesForSpotLights();
-	}
+	//if(gNumCreatedHeliLights || gNumCreatedSearchlights)
+	//{
+	//	SetRenderStatesForSpotLights();
+	//	RenderHeliLights();   // CHeliLights::RenderAll
+	//	RenderSearchlights(); // CSearchlights::RenderAll
+	//	ResetRenderStatesForSpotLights();
+	//}
 	RenderWeaponEffects(); // CWeaponEffects::Render
-	if(gReplayMode != 1 && !GetPad(0)->field_10E) // CReplay::Mode  CPad::GetPad
-		RenderWeaponTargetTriangle(FindPlayerPed(-1));
+	//if(gReplayMode != 1 && !GetPad(0)->field_10E) // CReplay::Mode  CPad::GetPad
+	//	RenderWeaponTargetTriangle(FindPlayerPed(-1));
 	RenderSpecialFX();          // CSpecialFX::Render
 	RenderFogEffect();          // CPointLights::RenderFogEffect
 	RenderFirstPersonVehicle(); // CRenderer::RenderFirstPersonVehicle
-	RenderPostProcess();
+	//RenderPostProcess();
 }

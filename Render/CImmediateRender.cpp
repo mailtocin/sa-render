@@ -1,4 +1,5 @@
 #include "CImmediateRender.h"
+#include "CGrassRender.h"
 #include "CPatch.h"
 #include <d3d9.h>
 
@@ -23,7 +24,13 @@ HRESULT __fastcall CImmediateRender::DrawPrimitive_1(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::InitGrassShader();
+	//}
 	result = device->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::DeInitGrassShader();
+	//}
 	// --
 	return result;
 }
@@ -33,7 +40,13 @@ HRESULT __fastcall CImmediateRender::DrawPrimitive_2(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::InitGrassShader();
+	//}
 	result = device->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::DeInitGrassShader();
+	//}
 	// --
 	return result;
 }
@@ -43,7 +56,13 @@ HRESULT __fastcall CImmediateRender::DrawPrimitiveUp(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::InitGrassShader();
+	//}
 	result = device->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::DeInitGrassShader();
+	//}
 	// --
 	return result;
 }
@@ -53,7 +72,13 @@ HRESULT __fastcall CImmediateRender::DrawIndexedPrimitive(int _ecx, int _edx, ID
 {
 	HRESULT result;
 	// --
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::InitGrassShader();
+	//}
 	result = device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::DeInitGrassShader();
+	//}
 	// --
 	return result;
 }
@@ -64,8 +89,14 @@ HRESULT __fastcall CImmediateRender::DrawIndexedPrimitiveUp(int _ecx, int _edx, 
 {
 	HRESULT result;
 	// --
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::InitGrassShader();
+	//}
 	result = device->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData,
 		VertexStreamZeroStride);
+	//if(m_nCurrentRendering == IM_RENDER_GRASS){
+		CGrassRender::DeInitGrassShader();
+	//}
 	// --
 	return result;
 }

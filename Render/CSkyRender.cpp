@@ -55,6 +55,7 @@ bool CSkyRender::CreateSkySphere(float fRad,UINT slices,UINT stacks) {
 }
 void CSkyRender::PreRender(D3DXVECTOR4 *pos,D3DXMATRIX *viewproj)
 {
+	CreateSkySphere(800,100,100);
 	D3DXMATRIX meshRotate, meshTranslate;
 	D3DXMatrixRotationY(&meshRotate, D3DXToRadian(0));
 	D3DXMatrixTranslation(&meshTranslate, pos->x,pos->y,-175);

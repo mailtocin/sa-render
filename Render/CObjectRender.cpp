@@ -80,7 +80,7 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	D3DXCOLOR color;
 	D3DXMATRIX vp,worldTransposedMatrix,worldViewProj,world;
 	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
-	rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
+	//rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		CRender::SetTextureMaps((STexture*)g_DefaultRender_ResEntry->meshData.material->texture,m_pEffect);
 	}
@@ -89,11 +89,13 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	getWorldViewProj(&worldViewProj,RwFrameGetLTM(g_DefaultRender_Atomic->object.object.parent),&vp);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
 	m_pEffect->SetMatrix("gmWorld",&world);
+	m_pEffect->SetBool("vcol",false);
 	color.r = (float)g_DefaultRender_ResEntry->meshData.material->color.red / 255.0f;
 	color.g = (float)g_DefaultRender_ResEntry->meshData.material->color.green / 255.0f;
 	color.b = (float)g_DefaultRender_ResEntry->meshData.material->color.blue / 255.0f;
 	color.a = (float)g_DefaultRender_ResEntry->meshData.material->color.alpha / 255.0f;
 	m_pEffect->SetVector("gvColor", (D3DXVECTOR4 *)&color);
+	m_pEffect->SetFloat("gfSpecularFactor", 1.0f-(float)g_DefaultRender_ResEntry->meshData.material->m_pReflection->m_ucIntensity* 0.0039215686f);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
@@ -135,7 +137,7 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	D3DXCOLOR color;
 	D3DXMATRIX vp,worldViewProj,world;
 	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
-	rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
+	//rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		CRender::SetTextureMaps((STexture*)g_DefaultRender_ResEntry->meshData.material->texture,m_pEffect);
 	}
@@ -145,10 +147,12 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	getWorldViewProj(&worldViewProj,ltm,&vp);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
 	m_pEffect->SetMatrix("gmWorld",&world);
+	m_pEffect->SetBool("vcol",false);
 	color.r = (float)g_DefaultRender_ResEntry->meshData.material->color.red / 255.0f;
 	color.g = (float)g_DefaultRender_ResEntry->meshData.material->color.green / 255.0f;
 	color.b = (float)g_DefaultRender_ResEntry->meshData.material->color.blue / 255.0f;
 	color.a = (float)g_DefaultRender_ResEntry->meshData.material->color.alpha / 255.0f;
+	m_pEffect->SetFloat("gfSpecularFactor", 1.0f-(float)g_DefaultRender_ResEntry->meshData.material->m_pReflection->m_ucIntensity* 0.0039215686f);
 	m_pEffect->SetVector("gvColor", (D3DXVECTOR4 *)&color);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
@@ -182,15 +186,17 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 	rwD3D9VSGetWorldNormalizedTransposeMatrix(&world);
 	getWorldViewProj(&worldViewProj,ltm,&vp);
 	m_pEffect->SetMatrix("gmWorldViewProj",&worldViewProj);
+	m_pEffect->SetBool("vcol",true);
 	m_pEffect->SetMatrix("gmWorld",&world);
 	for(unsigned int i = 0; i < repEntry->header.numMeshes; i++)
 	{
 		mat = mesh->material;
-		rwD3D9RenderStateVertexAlphaEnable(mesh->vertexAlpha || mat->color.alpha != 255);
+		//rwD3D9RenderStateVertexAlphaEnable(mesh->vertexAlpha || mat->color.alpha != 255);
 		color.r = (float)mat->color.red / 255.0f;
 		color.g = (float)mat->color.green / 255.0f;
 		color.b = (float)mat->color.blue / 255.0f;
 		color.a = (float)mat->color.alpha / 255.0f;
+		m_pEffect->SetFloat("gfSpecularFactor", 1.0f-(float)mat->m_pReflection->m_ucIntensity* 0.0039215686f);
 		m_pEffect->SetVector("gvColor", (D3DXVECTOR4 *)&color);
 		if(flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 			CRender::SetTextureMaps((STexture*)mat->texture,m_pEffect);
