@@ -11,7 +11,8 @@
 #include "CImmediateRender.h"
 #include "CLights.h"
 #include "CSkyRender.h"
-#include "CGrassRender.h"
+#include "CParticleRender.h"
+#include "CWaterRender.h"
 #include "CGame.h"
 #pragma comment(lib, "D3DDeviceReset.lib")
 
@@ -42,7 +43,8 @@ void CRender::Setup()
 	CObjectRender::Setup();
 	CPedsRender::Setup();
 	CSkyRender::Setup();
-	CGrassRender::Setup();
+	CParticleRender::Setup();
+	CWaterRender::Setup();
 }
 
 void CRender::DefineReset()
@@ -57,7 +59,8 @@ void CRender::BeforeReset()
 	CDeferredRendering::Lost();
 	CObjectRender::Lost();
 	CPedsRender::Lost();
-	CGrassRender::Lost();
+	CParticleRender::Lost();
+	CWaterRender::Lost();
 }
 
 void CRender::AfterReset()
@@ -66,7 +69,8 @@ void CRender::AfterReset()
 	CDeferredRendering::Reset();
 	CObjectRender::Reset();
 	CPedsRender::Reset();
-	CGrassRender::Reset();
+	CParticleRender::Reset();
+	CWaterRender::Reset();
 }
 
 D3DXMATRIX *__cdecl CRender::_getComposedMatrix(D3DXMATRIX *m_out)

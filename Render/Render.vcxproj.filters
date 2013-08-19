@@ -60,7 +60,10 @@
     <ClCompile Include="CImmediateRender.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CGrassRender.cpp">
+    <ClCompile Include="CParticleRender.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CWaterRender.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -152,7 +155,7 @@
     <ClInclude Include="CImmediateRender.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CGrassRender.h">
+    <ClInclude Include="CParticleRender.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -131,7 +131,7 @@ Deferred_OUT DeferredPS(VS_OUTPUT IN,float2 viewpos:VPOS)
 	float spec = (tex2D( gsSpecular, IN.texcoord.xy ).x>0)? tex2D( gsSpecular, IN.texcoord.xy ).x*gfSpecularFactor : gfSpecularFactor;
 	OUT.col1.w = spec;
 	OUT.col2 = float4(IN.wpos.xyz,IN.texcoord.z);
-	
+	OUT.col0.w = (OUT.col0.w<0.6f)? 0.0f:OUT.col0.w;
 	clip(OUT.col0.w);
 	//OUT.col3 = float4(1,1,1,1);
 	return OUT;

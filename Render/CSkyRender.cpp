@@ -55,10 +55,13 @@ bool CSkyRender::CreateSkySphere(float fRad,UINT slices,UINT stacks) {
 }
 void CSkyRender::PreRender(D3DXVECTOR4 *pos,D3DXMATRIX *viewproj)
 {
-	CreateSkySphere(800,100,100);
+	if (!skySphere)
+	{
+		CreateSkySphere(Timecycle->m_fCurrentFarClip*0.9f,100,100);
+	}
 	D3DXMATRIX meshRotate, meshTranslate;
 	D3DXMatrixRotationY(&meshRotate, D3DXToRadian(0));
-	D3DXMatrixTranslation(&meshTranslate, pos->x,pos->y,-175);
+	D3DXMatrixTranslation(&meshTranslate, pos->x,pos->y,pos->z);
 	D3DXMatrixMultiply(&gm_World, &meshRotate, &meshTranslate);
 	D3DXMatrixMultiplyTranspose(&gm_WorldViewProjection, &gm_World, viewproj);
 }
@@ -66,7 +69,7 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 {
 	UINT passes;
 	DWORD oDB,oSB,oBO,oAB,oAT;
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
+	//GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	m_pEffect->SetTechnique("Sky");
 	m_pEffect->SetTexture("cloudTex",CloudTex);
 	m_pEffect->SetVector("lightDirection",lightDirection);
@@ -88,12 +91,16 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 	m_pEffect->SetMatrix("gmWorld",&gm_World);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
-	skySphere->DrawSubset(0);
+	if(skySphere){
+		skySphere->DrawSubset(0);
+	}
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	SetOldStates(oDB,oSB,oBO,oAB,oAT);
+	//SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }
 void CSkyRender::Release()
 {
-	SAFE_RELEASE(skySphere);
+	if(skySphere){
+		SAFE_RELEASE(skySphere);
+	}
 }

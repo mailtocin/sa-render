@@ -5,7 +5,8 @@
 #include "CObjectRender.h"
 #include "CPedsRender.h"
 #include "CImmediateRender.h"
-#include "CGrassRender.h"
+#include "CParticleRender.h"
+#include "CWaterRender.h"
 #include "CLights.h"
 #include "CSkyRender.h"
 #include <stdio.h>
@@ -320,10 +321,10 @@ void CalculateFrustumCorners(float fNear, float fFar)
 	D3DXVec3Cross(&vY,&vZ,&vX);
 
     fNearPlaneHeight = (float)tan((gfFOV * 0.0087266462f) * 0.5f) * fNear;
-    fNearPlaneWidth = fNearPlaneHeight * 1.0;
+    fNearPlaneWidth = fNearPlaneHeight * 1.0f;
 
     fFarPlaneHeight = (float)tan((gfFOV * 0.0087266462f) * 0.5f) * fFar;
-    fFarPlaneWidth = fFarPlaneHeight * 1.0;
+    fFarPlaneWidth = fFarPlaneHeight * 1.0f;
 
     vNearPlaneCenter = vSource + vZ * fNear;
     vFarPlaneCenter = vSource + vZ * fFar;
@@ -609,11 +610,13 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
 		sun = D3DXVECTOR4(camPos.x+(CGlobalValues::gm_SunPosition.x),camPos.y+(CGlobalValues::gm_SunPosition.y),camPos.z+(CGlobalValues::gm_SunPosition.z),1);
-		CSkyRender::Render(&sun);
 		RenderScene();
 		RenderPedWeapons();
+		CSkyRender::Render(&sun);
 //----------------------------------------------------------------------
+		RwCameraEndUpdate(Scene->m_pRwCamera);
 		CSkyRender::Release();
+		RwCameraBeginUpdate(Scene->m_pRwCamera);
 		DWORD dwOldFVF;
 		DWORD oDB,oSB,oBO,oAB,oAT;
 		const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
@@ -679,10 +682,12 @@ void CDeferredRendering::Idle(void *a)
 		PostProcess(pOldRTSurf);
 		g_Device->SetFVF(dwOldFVF);
 		SetOldStates(oDB,oSB,oBO,oAB,oAT);
-		CGrassRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
+		CParticleRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
+		CWaterRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
+		CWaterRender::m_pEffect->SetTexture("tScreen",gbuffer[0]);
+		CImmediateRender::m_nCurrentRendering = IM_RENDER_WATER;
 		RenderWater();
-		//CImmediateRender::m_nCurrentRendering = IM_RENDER_GRASS;
-		//CImmediateRender::m_nCurrentRendering = IM_RENDER_NOT_DEFINED;
+		CImmediateRender::m_nCurrentRendering = IM_RENDER_PARTICLES;
 		RenderEffects();
 		sub_53E8D0(g_Unk);
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )

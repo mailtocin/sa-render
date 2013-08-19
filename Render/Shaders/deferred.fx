@@ -329,6 +329,14 @@ float GetShadow(half fSplitIndex, float4 faSplitUV[4])
 	}
 	return fShadow;
 }
+float PhongSpecular(float3 normal, float3 viewDir, float specularDecay,float3 LightDir)
+{
+    float nDotL = dot(normal, LightDir);
+    float3 reflection = 2.0f * normal * nDotL + -LightDir;
+    reflection = normalize(reflection);
+    float rdotV = saturate(dot(reflection, viewDir));
+    return pow(rdotV, specularDecay);
+}
 float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
 	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
 	float3 normal = normalSpec.xyz;
@@ -349,7 +357,7 @@ float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
 	//float3 vReflection = 2 * normal * fNdotV - normalize(gmViewInv[2].xyz);
 	//float3 hitPos = viewPos;
     float dDepth;
-	return float4(saturate(lighting.xxx),1);
+	return float4(saturate(lighting.xxx),PhongSpecular(normal,normalize( gmViewInv[3].xyz-WSpos.xyz),256,lightDirection-WSpos.xyz));
 }
 float4 mainPL_PS(VS_OUTPUT_POST IN) : COLOR {
 	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
@@ -360,7 +368,7 @@ float4 mainPL_PS(VS_OUTPUT_POST IN) : COLOR {
 	lightVec = lightVec / lengt;
 	half atten = max(1.0f - (lengt / PointLightRange), 0.0f);
 	half3 r    = reflect ( -normalize(IN.ViewRay), normal );
-	float spec = pow(max(0,dot(lightVec,r)),65.0);
+	float spec = PhongSpecular(normal,normalize( gmViewInv[3].xyz-WSpos.xyz),256,lightVec)*atten;
 	half lighting = max(dot(lightVec,normal),0.0).x;
 	return float4(saturate(lighting.xxx*atten*PointLightColor),spec);
 }
@@ -368,14 +376,14 @@ float4 mainL_PS(VS_OUTPUT_POST IN) : COLOR {
 	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
 	float d = tex2D(colorGBUFF,IN.texcoord).w;
 	float3 normal = normalSpec.xyz;
-	float3 ambient = lerp(gvAmbientColor2.xyz,gvAmbientColor.xyz,(normal.z));
+	float3 ambient = lerp(gvAmbientColor2.xyz,gvAmbientColor.xyz,saturate(normal.z));
 	float3 lighting = tex2D(lightBUFF,IN.texcoord).xyz+(0.3*ambient);
 	float3 refvect = reflect(normalize(IN.ViewRay),normal);
 	float4 reflColor = texCUBE(cubemapSampler,refvect.xyz);
 	if(d > 1){
 		return float4(tex2D(colorGBUFF,IN.texcoord).xyz,1);
 	} else {
-		return float4(lighting*tex2D(colorGBUFF,IN.texcoord).xyz+(reflColor.xyz*normalSpec.w*tex2D(colorGBUFF,IN.texcoord).xyz),1);
+		return float4(lighting*tex2D(colorGBUFF,IN.texcoord).xyz+(reflColor.xyz*normalSpec.w*tex2D(colorGBUFF,IN.texcoord).xyz)+(tex2D(lightBUFF,IN.texcoord).w*normalSpec.w),1);
 	}
 }
 float4 PP2_PS(VS_OUTPUT_POST IN) : COLOR {
