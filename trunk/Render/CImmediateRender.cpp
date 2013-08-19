@@ -1,9 +1,10 @@
 #include "CImmediateRender.h"
-#include "CGrassRender.h"
+#include "CParticleRender.h"
+#include "CWaterRender.h"
 #include "CPatch.h"
 #include <d3d9.h>
 
-eImmediateRendering CImmediateRender::m_nCurrentRendering;
+eImmediateRendering CImmediateRender::m_nCurrentRendering = IM_RENDER_PARTICLES;
 
 void CImmediateRender::Patch()
 {
@@ -24,13 +25,19 @@ HRESULT __fastcall CImmediateRender::DrawPrimitive_1(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::InitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::InitParticleShader();
+	}
+	else if(m_nCurrentRendering == IM_RENDER_WATER)
+	{
+		CWaterRender::InitWaterShader();
+	}
 	result = device->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::DeInitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::DeInitParticleShader();
+	} else if(m_nCurrentRendering == IM_RENDER_WATER){
+		CWaterRender::DeInitWaterShader();
+	}
 	// --
 	return result;
 }
@@ -40,13 +47,20 @@ HRESULT __fastcall CImmediateRender::DrawPrimitive_2(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::InitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::InitParticleShader();
+	}
+	else if(m_nCurrentRendering == IM_RENDER_WATER)
+	{
+		CWaterRender::InitWaterShader();
+	}
 	result = device->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::DeInitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::DeInitParticleShader();
+	} else if(m_nCurrentRendering == IM_RENDER_WATER){
+		CWaterRender::DeInitWaterShader();
+	}
+
 	// --
 	return result;
 }
@@ -56,13 +70,19 @@ HRESULT __fastcall CImmediateRender::DrawPrimitiveUp(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::InitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::InitParticleShader();
+	}
+	else if(m_nCurrentRendering == IM_RENDER_WATER)
+	{
+		CWaterRender::InitWaterShader();
+	}
 	result = device->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::DeInitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::DeInitParticleShader();
+	} else if(m_nCurrentRendering == IM_RENDER_WATER){
+		CWaterRender::DeInitWaterShader();
+	}
 	// --
 	return result;
 }
@@ -72,13 +92,19 @@ HRESULT __fastcall CImmediateRender::DrawIndexedPrimitive(int _ecx, int _edx, ID
 {
 	HRESULT result;
 	// --
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::InitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::InitParticleShader();
+	}
+	else if(m_nCurrentRendering == IM_RENDER_WATER)
+	{
+		CWaterRender::InitWaterShader();
+	}
 	result = device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::DeInitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::DeInitParticleShader();
+	} else if(m_nCurrentRendering == IM_RENDER_WATER){
+		CWaterRender::DeInitWaterShader();
+	}
 	// --
 	return result;
 }
@@ -89,14 +115,20 @@ HRESULT __fastcall CImmediateRender::DrawIndexedPrimitiveUp(int _ecx, int _edx, 
 {
 	HRESULT result;
 	// --
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::InitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::InitParticleShader();
+	}
+	else if(m_nCurrentRendering == IM_RENDER_WATER)
+	{
+		CWaterRender::InitWaterShader();
+	}
 	result = device->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData,
 		VertexStreamZeroStride);
-	//if(m_nCurrentRendering == IM_RENDER_GRASS){
-		CGrassRender::DeInitGrassShader();
-	//}
+	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
+		CParticleRender::DeInitParticleShader();
+	} else if(m_nCurrentRendering == IM_RENDER_WATER){
+		CWaterRender::DeInitWaterShader();
+	}
 	// --
 	return result;
 }

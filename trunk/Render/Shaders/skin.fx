@@ -162,7 +162,7 @@ Deferred_OUT DeferredPS(VS_OUTPUT IN)
 	float3   vNormalWorld    = normalize( mul( mTangentToWorld, vNormal ));
 	OUT.col0 = tex2D(gsDiffuse, IN.texcoord.xy)* gvColor;
 	OUT.col1.xyz = vNormalWorld.xyz;
-	float spec = (tex2D( gsSpecular, IN.texcoord.xy ).x>0)? tex2D( gsSpecular, IN.texcoord.xy ).x*gfSpecularFactor : gfSpecularFactor;
+	float spec = (tex2D( gsSpecular, IN.texcoord.xy ).x>0)? tex2D( gsSpecular, IN.texcoord.xy ).x*1.0 : 0.0;
 	OUT.col1.w = spec;
 	OUT.col2 = float4(IN.depth.xyz,IN.texcoord.z);
 	clip(OUT.col0.w);

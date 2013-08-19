@@ -6,7 +6,7 @@ enum eImmediateRendering
 {
 	IM_RENDER_NOT_DEFINED = 0,
 	IM_RENDER_WATER = 1,
-	IM_RENDER_GRASS = 2,
+	IM_RENDER_PARTICLES = 2,
 };
 
 class CImmediateRender

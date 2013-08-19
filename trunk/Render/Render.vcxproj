@@ -83,7 +83,7 @@
     <ClCompile Include="CDebug.cpp" />
     <ClCompile Include="CDeferredRendering.cpp" />
     <ClCompile Include="CGame.cpp" />
-    <ClCompile Include="CGrassRender.cpp" />
+    <ClCompile Include="CParticleRender.cpp" />
     <ClCompile Include="CImmediateRender.cpp" />
     <ClCompile Include="CNormalsGenerator.cpp" />
     <ClCompile Include="CObjectRender.cpp" />
@@ -93,6 +93,7 @@
     <ClCompile Include="CSkyRender.cpp" />
     <ClCompile Include="CTextureMaps.cpp" />
     <ClCompile Include="CVehicleRender.cpp" />
+    <ClCompile Include="CWaterRender.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="CLights.cpp" />
   </ItemGroup>
@@ -100,7 +101,7 @@
     <ClInclude Include="CDebug.h" />
     <ClInclude Include="CDeferredRendering.h" />
     <ClInclude Include="CGame.h" />
-    <ClInclude Include="CGrassRender.h" />
+    <ClInclude Include="CParticleRender.h" />
     <ClInclude Include="CImmediateRender.h" />
     <ClInclude Include="CNormalsGenerator.h" />
     <ClInclude Include="CObjectRender.h" />

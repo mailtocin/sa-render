@@ -75,7 +75,7 @@ Deferred_OUT skyPS(VS_SKY_OUTPUT IN) {
 	OUT.col0.xyz *= 0.9;
 	OUT.col0.w = 1.1;
 	OUT.col1 = float4(0,0,1,0);
-	OUT.col2 = float4(0,0,0,1);
+	OUT.col2 = float4(0,0,0,1000);
 	return OUT;
 }
 //--------------------------------Techniques------------------------------
