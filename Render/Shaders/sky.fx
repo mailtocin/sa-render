@@ -84,5 +84,12 @@ technique Sky {
 		VertexShader = compile vs_3_0 skyVS();
 		PixelShader  = compile ps_3_0 skyPS();
 		cullmode = none;
+		SrcBlend = ZERO;
+		DestBlend = ONE;
+		ALPHATESTENABLE=FALSE;
+		SEPARATEALPHABLENDENABLE=FALSE;
+		AlphaBlendEnable=FALSE;
+		FogEnable=FALSE;
+		SRGBWRITEENABLE=FALSE;
 	}
 };

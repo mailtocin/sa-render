@@ -35,6 +35,7 @@ struct VS_OUTPUT
     float4 vpos     : POSITION;
     float3 texcoord : TEXCOORD0;
 	float4 color    : TEXCOORD1;
+	float3 wpos     : TEXCOORD2;
 };
 
 struct VS_INPUT
@@ -51,6 +52,7 @@ VS_OUTPUT ForwardVS(VS_INPUT IN)
 	OUT.color = IN.color;
     OUT.texcoord.xy = IN.texcoord.xy;
 	OUT.texcoord.z = OUT.vpos.z;
+	OUT.wpos = IN.pos.xyz;
     return OUT;
 }
 
@@ -89,11 +91,12 @@ float4 ForwardPS(VS_OUTPUT IN,float2 viewpos:VPOS) : COLOR0
 {
 	float4 texColor = tex2D(gsDiffuse, IN.texcoord.xy);
 	float3 norm = AutoNormalGen(gsDiffuse, IN.texcoord.xy) * 2 - 1;
+	norm.xy *= 3;
 	float3 worldnorm;
 	worldnorm = -norm.x * g_vRight;
     worldnorm += norm.y * g_vUp;
     worldnorm += -norm.z * g_vForward;
-	float3 lighting = lerp(gvAmbientColor,gvAmbientColor2,saturate(worldnorm.z));
+	float3 lighting = max(dot(normalize(worldnorm),-normalize(g_LightDir-IN.wpos)),0.0f)+lerp(gvAmbientColor,gvAmbientColor2,saturate(worldnorm.z))*0.5f;
 	float depthFade = 1;
 	float depth = tex2D(gsDepth,viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f).w;
 	float4 depthViewSample = float4( viewpos, depth, 1 );
@@ -112,8 +115,8 @@ technique Forward
         PixelShader  = compile ps_3_0 ForwardPS();
 		CULLMODE = none;
 		SCISSORTESTENABLE = FALSE;
-		//AlphaBlendEnable=TRUE;
-		//ALPHATESTENABLE=TRUE;
+		AlphaBlendEnable=TRUE;
+		ALPHATESTENABLE=FALSE;
 		//ALPHAFUNC = GREATEREQUAL;
 		//ALPHAREF = 0x0000000F;
 		//SrcBlend = SRCALPHA;

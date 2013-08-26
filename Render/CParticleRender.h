@@ -11,5 +11,6 @@ public:
 	static void DeInitParticleShader();
 	static void Reset();
 	static void Lost();
+	static DWORD oDB,oSB,oBO,oAB,oAT;
 };
 

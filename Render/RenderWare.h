@@ -114,6 +114,8 @@ typedef struct RpWorld RpWorld;
 typedef struct RpSector RpSector;
 typedef struct RxD3D9ResEntryHeader RxD3D9ResEntryHeader;
 typedef struct RxD3D9InstanceData RxD3D9InstanceData;
+typedef struct RwD3D9Raster RwD3D9Raster;
+typedef struct RwD3D9Light RwD3D9Light;
 // classes
 #ifndef _IDA_EXPORT
 typedef class CEnvMapMaterial CEnvMapMaterial;
@@ -653,6 +655,25 @@ struct RxPipeline
     unsigned int           pluginId;
     unsigned int           pluginData;
 };
+struct RwD3D9Raster
+{
+    union
+    {
+        IDirect3DTexture9 *texture;
+        IDirect3DSurface9 *surface;
+    };
+    unsigned char       *palette;
+    unsigned char        alpha;
+    unsigned char        cubeTextureFlags; /* 0x01 IS_CUBEMAP_TEX */
+    unsigned char        textureFlags;     /* 0x01 HAS_MIP_MAPS
+                                                0x10 IS_COMPRESSED */
+    unsigned char        lockFlags;
+    IDirect3DSurface9   *lockedSurface;
+    D3DLOCKED_RECT       lockedRect;
+    D3DFORMAT            format;
+    IDirect3DSwapChain9 *swapChain;
+    HWND                *hwnd;
+};
 // RwRaster
 struct RwRaster
 {
@@ -670,28 +691,7 @@ struct RwRaster
     int            originalWidth;
     int            originalHeight;
     int            originalStride;
-#ifndef _IDA_EXPORT
-    // RenderWare plugin
-    struct
-    {
-        union
-        {
-            IDirect3DTexture9 *texture;
-            IDirect3DSurface9 *surface;
-        };
-        unsigned char       *palette;
-        unsigned char        alpha;
-        unsigned char        cubeTextureFlags; /* 0x01 IS_CUBEMAP_TEX */
-        unsigned char        textureFlags;     /* 0x01 HAS_MIP_MAPS
-                                                  0x10 IS_COMPRESSED */
-        unsigned char        lockFlags;
-        IDirect3DSurface9   *lockedSurface;
-        D3DLOCKED_RECT       lockedRect;
-        D3DFORMAT            format;
-        IDirect3DSwapChain9 *swapChain;
-        HWND                *hwnd;
-    } RwD3D9Raster;
-#endif
+    RwD3D9Raster rwD3D9raster;
 };
 // RxObjSpace3DVertex
 struct RxObjSpace3DVertex
@@ -701,6 +701,12 @@ struct RxObjSpace3DVertex
     unsigned int color;
     float        u;
     float        v;
+};
+
+struct RwD3D9Light
+{
+	D3DLIGHT9 d3dLight;
+	bool bEnable;
 };
 // RwImage
 struct RwImage

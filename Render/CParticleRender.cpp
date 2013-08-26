@@ -2,7 +2,7 @@
 #include "CDebug.h"
 #include <d3d9.h>
 ID3DXEffect *CParticleRender::m_pEffect;
-
+DWORD CParticleRender::oDB,CParticleRender::oSB,CParticleRender::oBO,CParticleRender::oAB,CParticleRender::oAT;
 bool CParticleRender::Setup()
 {
 	ID3DXBuffer *errors;
@@ -20,7 +20,6 @@ void CParticleRender::InitParticleShader() {
 	UINT p;
 	getWorldViewProj(NULL,NULL,&vp);
 	D3DXMATRIX mView;
-	DWORD oDB,oSB,oBO,oAB,oAT;
 	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	g_Device->GetTransform(D3DTS_VIEW,&mView);
     D3DXVECTOR3 vRight( mView._11, mView._21, mView._31 );
@@ -48,11 +47,15 @@ void CParticleRender::InitParticleShader() {
 	m_pEffect->SetTechnique("Forward");
 	m_pEffect->Begin(&p,0);
 	m_pEffect->BeginPass(0);
-	SetOldStates(oDB,oSB,oBO,oAB,oAT);
+	rwD3D9SetRenderState(D3DRS_DESTBLEND,oDB);
+	rwD3D9SetRenderState(D3DRS_SRCBLEND,oSB);
+	rwD3D9SetRenderState(D3DRS_BLENDOP,oBO);
+	rwD3D9SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
 }
 void CParticleRender::DeInitParticleShader() {
 	m_pEffect->EndPass();
 	m_pEffect->End();
+	SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }
 void CParticleRender::Reset()
 {

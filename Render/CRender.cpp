@@ -61,6 +61,8 @@ void CRender::BeforeReset()
 	CPedsRender::Lost();
 	CParticleRender::Lost();
 	CWaterRender::Lost();
+	if(CSkyRender::m_pEffect)
+		CSkyRender::m_pEffect->OnLostDevice();
 }
 
 void CRender::AfterReset()
@@ -71,6 +73,8 @@ void CRender::AfterReset()
 	CPedsRender::Reset();
 	CParticleRender::Reset();
 	CWaterRender::Reset();
+	if(CSkyRender::m_pEffect)
+		CSkyRender::m_pEffect->OnResetDevice();
 }
 
 D3DXMATRIX *__cdecl CRender::_getComposedMatrix(D3DXMATRIX *m_out)

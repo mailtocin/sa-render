@@ -173,7 +173,7 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 	D3DXCOLOR color;
 	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	rwD3D9EnableClippingIfNeeded(object, type);
-	rwD3D9SetRenderState(60, 0xFF000000u); // ?
+	//rwD3D9SetRenderState(60, 0xFF000000u); // ?
 	header = &repEntry->header;
 	mesh = &repEntry->meshData;
 	if(repEntry->header.indexBuffer)
@@ -202,13 +202,13 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 			CRender::SetTextureMaps((STexture*)mat->texture,m_pEffect);
 		}
 		m_pEffect->Begin(&passes,0);
+		m_pEffect->BeginPass(0);
 		if(header->indexBuffer){
-			m_pEffect->BeginPass(0);
 			rwD3D9DrawIndexedPrimitive(header->primType, mesh->baseIndex, 0, mesh->numVertices, mesh->startIndex, mesh->numPrimitives);
-			m_pEffect->EndPass();
 		}
 		else
 			rwD3D9DrawPrimitive(header->primType, mesh->baseIndex, mesh->numPrimitives);
+		m_pEffect->EndPass();
 		m_pEffect->End();
 		++mesh;
 	}

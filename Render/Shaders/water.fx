@@ -1,7 +1,9 @@
 float4x4 gmViewProj;
 float4x4 gmInvView;
+float4x4 gmRefl;
 texture2D gtDiffuse;
 texture2D gtDepth;
+texture2D tRefl;
 float2 fInverseViewportDimensions = {1.0/1024.0,1.0/768.0};
 float3 g_LightDir ={0,0,1};
 float3 g_vRight;
@@ -47,6 +49,15 @@ sampler TexScreen=sampler_state {
     MIPFILTER = LINEAR;
 };
 
+sampler TexRefl=sampler_state {
+    Texture   = <tRefl>;
+    ADDRESSU  = CLAMP;
+    ADDRESSV  = CLAMP;
+    ADDRESSW  = CLAMP;
+    MAGFILTER = LINEAR;
+    MINFILTER = LINEAR;
+    MIPFILTER = LINEAR;
+};
 // Normal Textures /////////////////////////////////////////
 const texture tNormalW;
 sampler TexNormalW=sampler_state {
@@ -111,6 +122,7 @@ struct VS_OUTPUT
 	float2 Tex2 	: TEXCOORD3;
  	float2 Tex3   	: TEXCOORD4;
 	float3 FresVec	: TEXCOORD5;
+	float4 refl 	: TEXCOORD6;
 };
 
 struct VS_INPUT
@@ -118,6 +130,21 @@ struct VS_INPUT
     float4 pos      : POSITION;
     float2 texcoord : TEXCOORD0;
 };
+
+float4x4 make_bias_mat(float BiasVal)
+{
+	float fTexWidth = 1024;
+	float fTexHeight = 768;
+	// float fZScale = pow(2.0,((float)SHAD_BIT_DEPTH))-1.0; // dx8
+	float fZScale = 1.0; //dx9
+	float fOffsetX = 0.5f + (0.5f / fTexWidth);
+	float fOffsetY = 0.5f + (0.5f / fTexHeight);
+	float4x4 result = float4x4(0.5f,     0.0f,     0.0f,      0.0f,
+							   0.0f,    -0.5f,     0.0f,      0.0f,
+							   0.0f,     0.0f,     fZScale,   0.0f,
+							   fOffsetX, fOffsetY, BiasVal,     1.0f );
+	return result;
+}
 
 VS_OUTPUT ForwardVS(VS_INPUT IN)
 {
@@ -140,6 +167,8 @@ VS_OUTPUT ForwardVS(VS_INPUT IN)
 	OUT.FresVec = mul( ViewPos, TBN );
 	OUT.texcoord.xy = IN.texcoord.xy;
 	OUT.texcoord.z = OUT.vpos.z;
+	float4x4 bias_mat = make_bias_mat(0.0000f);
+	OUT.refl = float4( OUT.vpos.x * 0.5 + 0.5 * OUT.vpos.w, 0.5 * OUT.vpos.w + OUT.vpos.y * 0.5, OUT.vpos.w, OUT.vpos.w );
     return OUT;
 }
 
@@ -173,7 +202,6 @@ float3 AutoNormalGen(sampler2D sample,float2 texCoord) {
    // Pack [-1, 1] into [0, 1]
    return normal * 0.5 + 0.5;
 }
-
 float PhongSpecular(float3 normal, float3 viewDir, float specularDecay,float3 LightDir)
 {
     float nDotL = dot(normal, LightDir);
@@ -185,9 +213,6 @@ float PhongSpecular(float3 normal, float3 viewDir, float specularDecay,float3 Li
 
 float4 ForwardPS(VS_OUTPUT IN,float2 viewpos:VPOS) : COLOR0
 {
-	float4 texColor = tex2D(gsDiffuse, IN.texcoord.xy);
-	
-	float3 norm = AutoNormalGen(gsDiffuse, IN.texcoord.xy);
 	float3 NormalWater;
 	NormalWater				= tex2D( TexWaves, IN.Tex2 *.5 ) * 0.30f;
 	NormalWater				+= tex2D( TexWaves, IN.Tex3 ) * 0.30f;	
@@ -196,7 +221,7 @@ float4 ForwardPS(VS_OUTPUT IN,float2 viewpos:VPOS) : COLOR0
 	NormalWater			 	+= tex2D( TexNormalN, IN.Tex / ( TexScale ) - ( time * WaterSpeed.zw ) ) * 0.20f;
 
 	NormalWater				= normalize( NormalWater * 2.0f - 1.0f );
-	
+	float4 texColor = tex2D(TexRefl, (IN.refl.xy/IN.refl.z)+NormalWater.xy);
 	float depthFade = 1;
 	float Dist = distance(IN.wpos,gmInvView[3].xyz);
 	float depth = tex2D(gsDepth,viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f).w;
