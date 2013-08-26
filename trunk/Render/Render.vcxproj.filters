@@ -66,6 +66,9 @@
     <ClCompile Include="CWaterRender.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CRendAPI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CRender.h">
@@ -156,6 +159,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CParticleRender.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CRendAPI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -24,6 +24,9 @@ IDirect3DSurface9 **CDeferredRendering::rsTmpSurface;
 // Lighting Buffer textures/surfaces
 IDirect3DTexture9 *CDeferredRendering::lightingTexture;
 IDirect3DSurface9 *CDeferredRendering::lightingSurface;
+// Planar Reflection textures/surfaces
+IDirect3DTexture9 *CDeferredRendering::reflectionTexture;
+IDirect3DSurface9 *CDeferredRendering::reflectionSurface;
 // Day/Night state
 float* _daylightLightingState = (float*)0x8D12C0;
 // Post-Process textures/surfaces count
@@ -34,12 +37,14 @@ int *CDeferredRendering::surfHeight;
 // Shadow View/Projection Matrix
 D3DXMATRIX CDeferredRendering::g_mLightView[4];
 D3DXMATRIX CDeferredRendering::g_mLightProj[4];
+// Reflection ViewProjection Matrix
+D3DXMATRIX CDeferredRendering::g_mReflViewProj;
 // Deferred/Post-Process Shader
 ID3DXEffect *CDeferredRendering::m_pEffect;
 // Noise texture for Post-Process
 IDirect3DTexture9 *noise;
 // Cubemap for Reflections
-IDirect3DCubeTexture9 *CDeferredRendering::cubemap;
+IDirect3DCubeTexture9 *CDeferredRendering::cubemap = NULL;
 // D3D parameters
 D3DPRESENT_PARAMETERS *g_D3Dpp = (D3DPRESENT_PARAMETERS *) 0xC9C040;
 // Shadow stuff
@@ -48,13 +53,13 @@ D3DXVECTOR3 *m_vUpVector;
 D3DXVECTOR3 m_vLightDirection;
 float m_faSplitDistances[5];
 float CDeferredRendering::maxShadowDistance = 1500;
+int CDeferredRendering::ShadowMapSize = 4096;
+float CDeferredRendering::ShadowBias = 0.0005f;
 D3DXVECTOR3 m_vaFrustumCorners[8];
 
 // Setup function
 bool CDeferredRendering::Setup()
 {
-	g_D3Dpp->MultiSampleQuality = 0;
-	g_D3Dpp->MultiSampleType = D3DMULTISAMPLE_NONE;
 	ID3DXBuffer *errors;
 	HRESULT result;
 	m_vUpVector = new D3DXVECTOR3(0, 0, 1);
@@ -63,11 +68,21 @@ bool CDeferredRendering::Setup()
 	if(!CDebug::CheckForShaderErrors(errors, "CDeferredRendering", "deferred", result))	{
 		return false;
 	}
-
 //-------------------------Loading textures-------------------------------
 	D3DXCreateTextureFromFile(g_Device,"noise.png",&noise);
 	D3DXCreateCubeTextureFromFile(g_Device,"grace_diffuse_cube.dds",&cubemap);
 //------------------------------------------------------------------------
+	char cStr[256];
+	char cPath[MAX_PATH];
+	GetModuleFileName(NULL, cPath, MAX_PATH);
+	if (strrchr(cPath, '\\')) *(char*)(strrchr(cPath, '\\') + 1) = '\0';
+	strcat_s(cPath, MAX_PATH, "SARender.ini");
+	GetPrivateProfileString("SHADOWS", "MaxShadowDistance", "1500", cStr, 256, cPath);
+	maxShadowDistance = (float)atof(cStr);
+	GetPrivateProfileString("SHADOWS", "ShadowMapSize", "4096", cStr, 256, cPath);
+	ShadowMapSize = (int)atoi(cStr);
+	GetPrivateProfileString("SHADOWS", "ShadowBias", "0.0005", cStr, 256, cPath);
+	ShadowBias = (float)atof(cStr);
 
 //------------------------Post-Process stuff------------------------------
 	// 1) We need to get postprocessing techniques count.
@@ -97,6 +112,8 @@ bool CDeferredRendering::Setup()
 //------------------------------------------------------------------------
 	return true;
 }
+
+
 
 // On Reset Device
 void CDeferredRendering::Reset()
@@ -128,7 +145,8 @@ void DrawFullScreenQuad() {
 	g_Device->CreateVertexDeclaration( Decl, &VertDecl );
 	// 3) Finnaly we need to set it all and draw it.
 	g_Device->SetVertexDeclaration(VertDecl);
-	g_Device->SetRenderState(D3DRS_CULLMODE,rwCULLMODECULLNONE);
+	rwD3D9SetRenderState(D3DRS_CULLMODE,rwCULLMODECULLNONE);
+	
 	g_Device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex));
 	// 4) And don't forget to release it, otherwise you can crash.
 	SAFE_RELEASE(VertDecl);
@@ -158,6 +176,7 @@ void CDeferredRendering::Lost()
 	}
 	SAFE_RELEASE(lightingSurface);
 	SAFE_RELEASE(lightingTexture);
+	//SAFE_RELEASE(cubemap);
 	for(int i = 0; i<ppTCcount;i++){
 		SAFE_RELEASE(rsTmpSurface[i]);
 		SAFE_RELEASE(rtTmpSurface[i]);
@@ -201,81 +220,31 @@ void CDeferredRendering::PostProcess(IDirect3DSurface9 *outSurf){
 }
 //------------------------------------------------------------------------
 
-// Cubemap rendering.. TODO: Make it WORK!!!!1111
-void CDeferredRendering::DrawCubemap(){
-	if(!cubemap){
-		g_Device->CreateCubeTexture(64,0,D3DUSAGE_RENDERTARGET,
-									D3DFMT_R8G8B8,D3DPOOL_DEFAULT,
-									&cubemap,NULL);
-	}
-	IDirect3DSurface9* pOldRTSurf= NULL,*m_pZBuffer = NULL;
-	D3DXMATRIX view,proj;
-	g_Device->GetTransform(D3DTS_VIEW,&view);
-	g_Device->GetTransform(D3DTS_PROJECTION, &proj);
+void CDeferredRendering::DrawWaterReflection(){
+	IDirect3DSurface9* pOldRTSurf= NULL;
+	D3DXMATRIX mOldView,proj;
+	D3DXMATRIX mView, mReflect;
+	g_Device->GetTransform(D3DTS_VIEW,&mOldView);
+	g_Device->GetTransform(D3DTS_PROJECTION,&proj);
 	g_Device->GetRenderTarget(0, &pOldRTSurf);
-	g_Device->GetDepthStencilSurface(&m_pZBuffer);
 	pOldRTSurf->Release();
-	m_pZBuffer->Release();
-	D3DXMATRIX matProj;
-	D3DXMatrixPerspectiveFovLH(&matProj, D3DX_PI/2, 1.0f, 0.5f, 1000.0f);
-	CVector camPos;
+	CVector camPos,*cam;
+	cam = GetCamPos();
 	FindPlayerCoors(&camPos, 0);
-	for(DWORD i=0; i<6; i++)
-	{
-		// Standard view that will be overridden below
-		D3DXVECTOR3 vEnvEyePt = D3DXVECTOR3(camPos.x, camPos.y, camPos.z);
-		D3DXVECTOR3 vLookatPt, vUpVec;
-
-		switch(i)
-		{
-		case D3DCUBEMAP_FACE_POSITIVE_X:
-			vLookatPt = D3DXVECTOR3(1.0f, 0.0f, 0.0f);
-			vUpVec    = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
-			break;
-		case D3DCUBEMAP_FACE_NEGATIVE_X:
-			vLookatPt = D3DXVECTOR3(-1.0f, 0.0f, 0.0f);
-			vUpVec    = D3DXVECTOR3( 0.0f, 1.0f, 0.0f);
-			break;
-		case D3DCUBEMAP_FACE_POSITIVE_Y:
-			vLookatPt = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
-			vUpVec    = D3DXVECTOR3(0.0f, 0.0f,-1.0f);
-			break;
-		case D3DCUBEMAP_FACE_NEGATIVE_Y:
-			vLookatPt = D3DXVECTOR3(0.0f,-1.0f, 0.0f);
-			vUpVec    = D3DXVECTOR3(0.0f, 0.0f, 1.0f);
-			break;
-		case D3DCUBEMAP_FACE_POSITIVE_Z:
-			vLookatPt = D3DXVECTOR3( 0.0f, 0.0f, 1.0f);
-			vUpVec    = D3DXVECTOR3( 0.0f, 1.0f, 0.0f);
-			break;
-		case D3DCUBEMAP_FACE_NEGATIVE_Z:
-			vLookatPt = D3DXVECTOR3(0.0f, 0.0f,-1.0f);
-			vUpVec    = D3DXVECTOR3(0.0f, 1.0f, 0.0f);
-			break;
-		}
-		D3DXMATRIX matView;
-		D3DXMatrixLookAtLH(&matView, &vEnvEyePt, &(vLookatPt+vEnvEyePt), &vUpVec);
-		IDirect3DSurface9 *pFace;
-		cubemap->GetCubeMapSurface((D3DCUBEMAP_FACES)i, 0, &pFace);
-		g_Device->SetRenderTarget(0,pFace);
-		SAFE_RELEASE(pFace);
-		g_Device->SetDepthStencilSurface(m_pZBuffer);
-		RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
-		g_Device->SetTransform(D3DTS_VIEW,&matView);
-		g_Device->SetTransform(D3DTS_PROJECTION,&matProj);
-		CObjectRender::m_pEffect->SetTechnique("Shadow");
-		CVehicleRender::m_pEffect->SetTechnique("Shadow");
-		CPedsRender::m_pEffect->SetTechnique("Shadow");
-		RenderScene();
-		RenderPedWeapons();
-	}
-	g_Device->SetRenderTarget(0,pOldRTSurf);
-	g_Device->SetDepthStencilSurface(m_pZBuffer);
-	SAFE_RELEASE(pOldRTSurf);
-	SAFE_RELEASE(m_pZBuffer);
+	D3DXPLANE plane;
+	D3DXPlaneFromPointNormal(&plane,&D3DXVECTOR3(camPos.x,camPos.y,camPos.z),&D3DXVECTOR3(camPos.x,camPos.y+1,camPos.z));
+	D3DXMatrixLookAtLH(&mView,&D3DXVECTOR3(cam->x,cam->y,cam->z),&D3DXVECTOR3(camPos.x,camPos.y,camPos.z),&D3DXVECTOR3(0,1,0));
+	//D3DXMatrixReflect( &mReflect, &plane );
+    //D3DXMatrixMultiply( &mView, &mReflect, &mOldView );
+	D3DXMatrixMultiplyTranspose(&g_mReflViewProj,&mView,&proj);
+	g_Device->SetTransform(D3DTS_VIEW,&mView);
+	g_Device->SetRenderTarget(0,reflectionSurface);
 	RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
-	g_Device->SetTransform(D3DTS_VIEW,&view);
-	g_Device->SetTransform(D3DTS_PROJECTION,&proj);
+	CObjectRender::m_pEffect->SetTechnique("Reflection");
+	RenderEverythingBarRoads();
+	g_Device->SetRenderTarget(0,pOldRTSurf);
+	RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
+	g_Device->SetTransform(D3DTS_VIEW,&mOldView);
 }
 
 //-----------------------Shadow Mapping Function--------------------------
@@ -299,58 +268,6 @@ void CalculateSplitDistances()
     m_faSplitDistances[3] = m_faSplitDistances[1] + (CDeferredRendering::maxShadowDistance - m_faSplitDistances[1]) * 0.6f;
     m_faSplitDistances[4] = CDeferredRendering::maxShadowDistance;
 }
-void CalculateFrustumCorners(float fNear, float fFar)
-{
-    float fScale, fNearPlaneHeight, fNearPlaneWidth, fFarPlaneHeight, fFarPlaneWidth;
-    D3DXVECTOR3 vCenter = D3DXVECTOR3(), vFarPlaneCenter, vNearPlaneCenter;
-    D3DXVECTOR3 vSource, vTarget, vZ, vX, vY;
-
-    // TVCamera.GetFrustumPoints() is not an option, since we
-    // only compute the frustum corners for a single split,
-    // not for the whole frustum. Changing the planes of the TVCamera
-    // could work, but I haven't tested this.. since this is working fine :)
-    vSource = D3DXVECTOR3(Scene->m_pRwCamera->object.object.parent->ltm.pos.x,
-						  Scene->m_pRwCamera->object.object.parent->ltm.pos.y,
-						  Scene->m_pRwCamera->object.object.parent->ltm.pos.z);
-    vTarget = D3DXVECTOR3(Scene->m_pRwCamera->object.object.parent->ltm.at.x,
-						  Scene->m_pRwCamera->object.object.parent->ltm.at.y,
-						  Scene->m_pRwCamera->object.object.parent->ltm.at.z);
-	D3DXVec3Normalize(&vZ,&(vTarget - vSource));
-	D3DXVec3Cross(&vX,m_vUpVector,&vZ);
-	D3DXVec3Normalize(&vX,&vX);
-	D3DXVec3Cross(&vY,&vZ,&vX);
-
-    fNearPlaneHeight = (float)tan((gfFOV * 0.0087266462f) * 0.5f) * fNear;
-    fNearPlaneWidth = fNearPlaneHeight * 1.0f;
-
-    fFarPlaneHeight = (float)tan((gfFOV * 0.0087266462f) * 0.5f) * fFar;
-    fFarPlaneWidth = fFarPlaneHeight * 1.0f;
-
-    vNearPlaneCenter = vSource + vZ * fNear;
-    vFarPlaneCenter = vSource + vZ * fFar;
-
-    m_vaFrustumCorners[0] = vNearPlaneCenter - vX * fNearPlaneWidth - vY * fNearPlaneHeight;
-    m_vaFrustumCorners[1] = vNearPlaneCenter + vX * fNearPlaneWidth - vY * fNearPlaneHeight;
-    m_vaFrustumCorners[2] = vNearPlaneCenter - vX * fNearPlaneWidth + vY * fNearPlaneHeight;
-    m_vaFrustumCorners[3] = vNearPlaneCenter + vX * fNearPlaneWidth + vY * fNearPlaneHeight;
-    m_vaFrustumCorners[4] = vFarPlaneCenter - vX * fFarPlaneWidth - vY * fFarPlaneHeight;
-    m_vaFrustumCorners[5] = vFarPlaneCenter + vX * fFarPlaneWidth - vY * fFarPlaneHeight;
-    m_vaFrustumCorners[6] = vFarPlaneCenter - vX * fFarPlaneWidth + vY * fFarPlaneHeight;
-    m_vaFrustumCorners[7] = vFarPlaneCenter + vX * fFarPlaneWidth + vY * fFarPlaneHeight;
-
-    // Increase the scale of the frustum a bit to avoid artefacts near the screen corners.
-    // Start by calculating the center of our frustum points
-    fScale = 1.1f;
-
-    for (int i = 0; i < 8; i++)
-        vCenter += m_vaFrustumCorners[i];
-
-    vCenter /= 8.0f;
-
-    // Finally scale it by adding offset from center
-    for (int i = 0; i < 8; i++)
-        m_vaFrustumCorners[i] += (m_vaFrustumCorners[i] - vCenter) * (fScale - 1.0f);
-}
 void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 										  IDirect3DSurface9*shadowSurfaceC,
 										  float distance,D3DXMATRIX*lightview,
@@ -360,6 +277,8 @@ void CDeferredRendering::ComputeShadowMap(IDirect3DSurface9*shadowSurface,
 	RwCameraEndUpdate(Scene->m_pRwCamera);
 	RwCameraSetNearClipPlane(Scene->m_pRwCamera, m_faSplitDistances[cascadeNum-1]);
 	RwCameraSetFarClipPlane(Scene->m_pRwCamera, m_faSplitDistances[cascadeNum]);
+	Scene->m_pRwCamera->frameBuffer->width = ShadowMapSize;
+	Scene->m_pRwCamera->frameBuffer->height = ShadowMapSize;
 	RwCameraBeginUpdate(Scene->m_pRwCamera);
 	// 2) We need to get some values(sun position and player position).
 	RwV3D sunpos;
@@ -525,17 +444,16 @@ void CDeferredRendering::Idle(void *a)
 		RwCameraEndUpdate(Scene->m_pRwCamera);
 		for(int i =0;i<8;i+=2){
 			if(!shadow[i]){
-				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_R5G6B5,D3DPOOL_DEFAULT,&shadow[i],NULL);
+				g_Device->CreateTexture(ShadowMapSize,ShadowMapSize,0,D3DUSAGE_RENDERTARGET,D3DFMT_R5G6B5,D3DPOOL_DEFAULT,&shadow[i],NULL);
 				shadow[i]->GetSurfaceLevel(0,&shadowSurface[i]);
 			}
 		}
 		for(int i =1;i<8;i+=2){
 			if(!shadow[i]){
-				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_DEPTHSTENCIL,D3DFMT_D24S8,D3DPOOL_DEFAULT,&shadow[i],NULL);
+				g_Device->CreateTexture(ShadowMapSize,ShadowMapSize,0,D3DUSAGE_DEPTHSTENCIL,D3DFMT_D24S8,D3DPOOL_DEFAULT,&shadow[i],NULL);
 				shadow[i]->GetSurfaceLevel(0,&shadowSurface[i]);
 			}
 		}
-		
 		for(int i =0;i<3;i++) {
 			if(!gbuffer[i]) {
 				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,i==2? D3DFMT_A32B32G32R32F:D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT,&gbuffer[i],NULL);
@@ -546,6 +464,10 @@ void CDeferredRendering::Idle(void *a)
 			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&lightingTexture,NULL);
 			lightingTexture->GetSurfaceLevel(0,&lightingSurface);
 		}
+		/*if(!reflectionTexture) {
+			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&reflectionTexture,NULL);
+			reflectionTexture->GetSurfaceLevel(0,&reflectionSurface);
+		}*/
 		if(ppTCcount>1) {
 			for(int i = 0; i<ppTCcount;i++) {
 				if(!rtTmpSurface[i]) {
@@ -561,7 +483,10 @@ void CDeferredRendering::Idle(void *a)
 		GetSunPosn((CVector*)&CGlobalValues::gm_SunPosition,1000);
 		CalculateSplitDistances();
 		FindPlayerCoors(&camPos, 0);
-		//RwCameraBeginUpdate(Scene->m_pRwCamera);
+		//DrawWaterReflection();
+		int oldWidth,oldHeight;
+		oldWidth = Scene->m_pRwCamera->frameBuffer->width;
+		oldHeight = Scene->m_pRwCamera->frameBuffer->height;
 		ComputeShadowMap(shadowSurface[1],shadowSurface[0],150,&g_mLightView[0],&g_mLightProj[0],1);
 		ComputeShadowMap(shadowSurface[3],shadowSurface[2],150,&g_mLightView[1],&g_mLightProj[1],2);
 		ComputeShadowMap(shadowSurface[5],shadowSurface[4],150,&g_mLightView[2],&g_mLightProj[2],3);
@@ -569,8 +494,9 @@ void CDeferredRendering::Idle(void *a)
 		RwCameraEndUpdate(Scene->m_pRwCamera);
 		RwCameraSetNearClipPlane(Scene->m_pRwCamera, 0.1f);
 		RwCameraSetFarClipPlane(Scene->m_pRwCamera, Timecycle->m_fCurrentFarClip);
+		Scene->m_pRwCamera->frameBuffer->width = oldWidth;
+		Scene->m_pRwCamera->frameBuffer->height = oldHeight;
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
-		//DrawCubemap();
 		//RwCameraEndUpdate(Scene->m_pRwCamera);
 		g_Device->GetTransform(D3DTS_VIEW,&view);
 		g_Device->GetTransform(D3DTS_PROJECTION,&proj);
@@ -588,8 +514,11 @@ void CDeferredRendering::Idle(void *a)
 		g_Device->GetRenderTarget(0, &pOldRTSurf);
 		pOldRTSurf->Release();
 		g_Device->SetRenderTarget(0,gbSurface[0]);
+		//CurrentRenderSurface[0] = gbSurface[0];
 		g_Device->SetRenderTarget(1,gbSurface[1]);
+		//CurrentRenderSurface[1] = gbSurface[1];
 		g_Device->SetRenderTarget(2,gbSurface[2]);
+		//CurrentRenderSurface[2] = gbSurface[2];
 		g_Device->Clear(0,NULL,D3DCLEAR_STENCIL||D3DCLEAR_TARGET||D3DCLEAR_ZBUFFER,cc,1,0);
 		//RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
 		CObjectRender::m_pEffect->SetTechnique("Deferred");
@@ -605,7 +534,8 @@ void CDeferredRendering::Idle(void *a)
 		ambientColor2.g = (float)Timecycle->m_fCurrentAmbientObjGreen;
 		ambientColor2.b = (float)Timecycle->m_fCurrentAmbientObjBlue;
 		ambientColor2.a = 1.0;
-		m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);		
+		m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);
+		m_pEffect->SetVector("fInverseViewportDimensions", &D3DXVECTOR4(1.0f/(float)oldWidth,1.0f/(float)oldHeight,1,1));
 		m_pEffect->SetMatrix("gmViewProj",&viewproj);
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
@@ -627,7 +557,6 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetTechnique("DefShad");
 		D3DXMATRIX m_LightViewProj[4];
 		g_Device->SetRenderTarget(0,lightingSurface);
-		//g_Device->SetRenderTarget(0,pOldRTSurf);
 		g_Device->SetRenderTarget(1,NULL);
 		g_Device->SetRenderTarget(2,NULL);
 		D3DXMatrixMultiplyTranspose(&m_LightViewProj[0],&g_mLightView[0],&g_mLightProj[0]);
@@ -645,6 +574,8 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetTexture("test2",shadow[3]);
 		m_pEffect->SetTexture("test3",shadow[5]);
 		m_pEffect->SetTexture("test4",shadow[7]);
+		m_pEffect->SetVector("SunColor",&D3DXVECTOR4(1-(*_daylightLightingState),1-(*_daylightLightingState),1-(*_daylightLightingState),1-(*_daylightLightingState)));
+		m_pEffect->SetVector("ShadowParams",&D3DXVECTOR4(ShadowMapSize,1.0f/(float)ShadowMapSize,ShadowBias,1));
 		m_pEffect->SetVector("g_fSplitDistances",&D3DXVECTOR4(m_faSplitDistances[1],
 															  m_faSplitDistances[2],
 															  m_faSplitDistances[3],
@@ -685,11 +616,12 @@ void CDeferredRendering::Idle(void *a)
 		CParticleRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
 		CWaterRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
 		CWaterRender::m_pEffect->SetTexture("tScreen",gbuffer[0]);
+		CWaterRender::m_pEffect->SetTexture("tRefl",reflectionTexture);
+		CWaterRender::m_pEffect->SetMatrix("gmRefl",&g_mReflViewProj);
 		CImmediateRender::m_nCurrentRendering = IM_RENDER_WATER;
 		RenderWater();
 		CImmediateRender::m_nCurrentRendering = IM_RENDER_PARTICLES;
 		RenderEffects();
-		sub_53E8D0(g_Unk);
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )
 			SetCameraMotionBlurAlpha(TheCamera, 150); // CCamera::SetMotionBlurAlpha
 		RenderCameraMotionBlur(TheCamera);            // CCamera::RenderMotionBlur
@@ -770,8 +702,8 @@ void CDeferredRendering::RenderScene()
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
 	}*/
 	RenderBrokenObjects(byte_BB4240, 1);
-	/*RenderGrass(); // CGrass::Render
-	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLNONE);
+	//RenderGrass(); // CGrass::Render
+	/*RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLNONE);
 	if(!gOcclReflectionsState)
 	{
 		sub_7154B0();
@@ -797,29 +729,29 @@ void __declspec(naked)CDeferredRendering::RenderParticlesType0()
 
 void CDeferredRendering::RenderEffects()
 {
-	//RenderBirds();        // CBirds::Render
+	/*RenderBirds();        // CBirds::Render
 	RenderSkidmarks();    // CSkidmarks::Render
 	RenderRopes();        // CRopes::Render
 	RenderGlass();        // CGlass::Render
-	sub_733800();
+	sub_733800();*/
 	RenderCoronas();      // CCoronas::Render
 	RenderParticlesType0();
-	RenderWaterCannons(); // CWaterCannons::Render
+	/*RenderWaterCannons(); // CWaterCannons::Render
 	sub_6E7760();
 	RenderCloudMasked();
 	RenderHighClouds();
-	//if(gNumCreatedHeliLights || gNumCreatedSearchlights)
-	//{
-	//	SetRenderStatesForSpotLights();
-	//	RenderHeliLights();   // CHeliLights::RenderAll
-	//	RenderSearchlights(); // CSearchlights::RenderAll
-	//	ResetRenderStatesForSpotLights();
-	//}
-	RenderWeaponEffects(); // CWeaponEffects::Render
+	if(gNumCreatedHeliLights || gNumCreatedSearchlights)
+	{
+		//SetRenderStatesForSpotLights();
+		RenderHeliLights();   // CHeliLights::RenderAll
+		RenderSearchlights(); // CSearchlights::RenderAll
+		//ResetRenderStatesForSpotLights();
+	}*/
+	//RenderWeaponEffects(); // CWeaponEffects::Render
 	//if(gReplayMode != 1 && !GetPad(0)->field_10E) // CReplay::Mode  CPad::GetPad
 	//	RenderWeaponTargetTriangle(FindPlayerPed(-1));
-	RenderSpecialFX();          // CSpecialFX::Render
-	RenderFogEffect();          // CPointLights::RenderFogEffect
-	RenderFirstPersonVehicle(); // CRenderer::RenderFirstPersonVehicle
+	//RenderSpecialFX();          // CSpecialFX::Render
+	//RenderFogEffect();          // CPointLights::RenderFogEffect
+	//RenderFirstPersonVehicle(); // CRenderer::RenderFirstPersonVehicle
 	//RenderPostProcess();
 }

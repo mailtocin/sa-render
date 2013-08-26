@@ -87,7 +87,7 @@ VS_OUTPUT DeferredVS(VS_INPUT IN)
     OUT.texcoord.xy = IN.texcoord.xy;
 	OUT.texcoord.z = OUT.vpos.z;
 	OUT.tangent = mul(gmWorld, IN.tangent.xyz);
-	OUT.binormal = mul(gmWorld,normalize(cross(IN.tangent,IN.normal)));
+	OUT.binormal = mul(gmWorld,cross(IN.tangent,IN.normal));
 	OUT.wpos =wpos;
     return OUT;
 }
@@ -141,8 +141,8 @@ technique Deferred
 {
     pass p0
     {
-        VertexShader = compile vs_3_0 DeferredVS();
-        PixelShader  = compile ps_3_0 DeferredPS();
+        VertexShader = compile vs_2_0 DeferredVS();
+        PixelShader  = compile ps_2_0 DeferredPS();
 		SEPARATEALPHABLENDENABLE=FALSE;
 		AlphaBlendEnable=FALSE;
 		ALPHATESTENABLE=TRUE;
@@ -154,12 +154,13 @@ technique Shadow
 {
     pass p0
     {
-        VertexShader = compile vs_3_0 shadowVS();
-        PixelShader  = compile ps_3_0 shadowPS();
+        VertexShader = compile vs_2_0 shadowVS();
+        PixelShader  = compile ps_2_0 shadowPS();
 		SEPARATEALPHABLENDENABLE=FALSE;
 		AlphaBlendEnable=FALSE;
 		ALPHATESTENABLE=TRUE;
 		SrcBlend = one;
 		DestBlend = zero;
+		Cullmode = ccw;
     }
 };

@@ -41,6 +41,7 @@ float PointLightRange;
 float ScreenSizeX;
 float ScreenSizeY;
 float3 PointLightColor;
+float3 ShadowParams; // Shadow Size, 1/Shadow Size, Shadow Bias
 int PostProcessCount = 8;
 sampler2D colorGBUFF = sampler_state
 {
@@ -273,14 +274,14 @@ VS_OUTPUT_POST mainVS(VS_INPUT_POST IN) {
 	OUT.vpos=Po;
 	OUT.texcoord = IN.texcoord;
 	float3 positionWS = mul(Po, gmViewProjInv).xyz;
-	OUT.ViewRay = gmViewInv[2].xyz;
+	OUT.ViewRay = IN.pos.xyz;
 	return OUT;
 }
 
 float4x4 make_bias_mat(float BiasVal)
 {
-	float fTexWidth = ScreenSizeX;
-	float fTexHeight = ScreenSizeY;
+	float fTexWidth = ShadowParams.x;
+	float fTexHeight = ShadowParams.x;
 	// float fZScale = pow(2.0,((float)SHAD_BIT_DEPTH))-1.0; // dx8
 	float fZScale = 1.0; //dx9
 	float fOffsetX = 0.5f + (0.5f / fTexWidth);
@@ -288,7 +289,7 @@ float4x4 make_bias_mat(float BiasVal)
 	float4x4 result = float4x4(0.5f,     0.0f,     0.0f,      0.0f,
 							   0.0f,    -0.5f,     0.0f,      0.0f,
 							   0.0f,     0.0f,     fZScale,   0.0f,
-							   fOffsetX, fOffsetY, BiasVal,     1.0f );
+							   fOffsetX, fOffsetY, -BiasVal,     1.0f );
 	return result;
 }
 float4 g_fSplitDistances;
@@ -301,7 +302,7 @@ float3 offset_lookup(sampler2D map,
                      float4 loc,
                      float2 offset)
 {
-	float2 texmapscale = {1/ScreenSizeX,1/ScreenSizeY};
+	float2 texmapscale = {ShadowParams.y,ShadowParams.y};
 	return tex2Dproj(map, float4(loc.xy + offset * texmapscale * loc.w, loc.z, loc.w));
 }
 float sampleShadow(sampler2D shadowmap,float4 shadowCoord){
@@ -337,12 +338,14 @@ float PhongSpecular(float3 normal, float3 viewDir, float specularDecay,float3 Li
     float rdotV = saturate(dot(reflection, viewDir));
     return pow(rdotV, specularDecay);
 }
-float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
-	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
+float2 fInverseViewportDimensions = {1.0/1024.0,1.0/768.0};
+float4 mainPS(VS_OUTPUT_POST IN,float2 viewpos:VPOS) : COLOR {
+	float2 tc = viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f;
+	float4 normalSpec = tex2D(nsGBUFF,tc);
 	float3 normal = normalSpec.xyz;
 	half  spec = normalSpec.w;
-	float4 WSpos = tex2D(shadGBUFF,IN.texcoord);
-	float4x4 bias_mat = make_bias_mat(0.0003f);
+	float4 WSpos = tex2D(shadGBUFF,tc);
+	float4x4 bias_mat = make_bias_mat(ShadowParams.z);
 	
 	float4 shadow[4];
 	for(int n = 0; n < 4; n++ ){
@@ -350,7 +353,7 @@ float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
 	}
 	half fSplitIndex = GetSplitByDepth(WSpos.w);
 	
-	half lighting = saturate(dot(normalize(lightDirection-WSpos.xyz),normal)).x*GetShadow(fSplitIndex, shadow);
+	half lighting = saturate(dot(normalize(lightDirection-WSpos.xyz),normal)).x*GetShadow(fSplitIndex, shadow)*SunColor;
 	//float3 ambient = lerp(gvAmbientColor2.xyz,gvAmbientColor.xyz,normalize(1-sqrt(1-dot(normal.xy, normal.xy))));
 	//float3 finalColor = (saturate(lighting)*SunColor+0.3)*tex2D(colorGBUFF,IN.texcoord).xyz;
 	//float  fNdotV     = saturate(dot( normal, normalize(gmViewInv[2].xyz)));
@@ -359,35 +362,39 @@ float4 mainPS(VS_OUTPUT_POST IN) : COLOR {
     float dDepth;
 	return float4(saturate(lighting.xxx),PhongSpecular(normal,normalize( gmViewInv[3].xyz-WSpos.xyz),256,lightDirection-WSpos.xyz));
 }
-float4 mainPL_PS(VS_OUTPUT_POST IN) : COLOR {
-	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
+float4 mainPL_PS(VS_OUTPUT_POST IN,float2 viewpos:VPOS) : COLOR {
+	float2 tc = viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f;
+	float4 normalSpec = tex2D(nsGBUFF,tc);
 	float3 normal = normalSpec.xyz;
-	float3 WSpos = tex2D(shadGBUFF,IN.texcoord).xyz;
+	float3 WSpos = tex2D(shadGBUFF,tc).xyz;
 	float3 lightVec = (sLP-WSpos.xyz);
 	float lengt = length(lightVec);
 	lightVec = lightVec / lengt;
 	half atten = max(1.0f - (lengt / PointLightRange), 0.0f);
-	half3 r    = reflect ( -normalize(IN.ViewRay), normal );
+	half3 r    = reflect ( normalize(gmViewInv[3].xyz-WSpos.xyz), normal );
 	float spec = PhongSpecular(normal,normalize( gmViewInv[3].xyz-WSpos.xyz),256,lightVec)*atten;
 	half lighting = max(dot(lightVec,normal),0.0).x;
 	return float4(saturate(lighting.xxx*atten*PointLightColor),spec);
 }
-float4 mainL_PS(VS_OUTPUT_POST IN) : COLOR {
-	float4 normalSpec = tex2D(nsGBUFF,IN.texcoord);
-	float d = tex2D(colorGBUFF,IN.texcoord).w;
+float4 mainL_PS(VS_OUTPUT_POST IN,float2 viewpos:VPOS) : COLOR {
+	float2 tc = viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f;
+	float4 normalSpec = tex2D(nsGBUFF,tc);
+	float3 WSpos = tex2D(shadGBUFF,tc).xyz;
+	float d = tex2D(colorGBUFF,tc).w;
 	float3 normal = normalSpec.xyz;
 	float3 ambient = lerp(gvAmbientColor2.xyz,gvAmbientColor.xyz,saturate(normal.z));
-	float3 lighting = tex2D(lightBUFF,IN.texcoord).xyz+(0.3*ambient);
-	float3 refvect = reflect(normalize(IN.ViewRay),normal);
-	float4 reflColor = texCUBE(cubemapSampler,refvect.xyz);
+	float3 lighting = tex2D(lightBUFF,tc).xyz+(0.3*ambient);
+	float3 refvect = reflect(normalize(gmViewInv[3].xyz-WSpos.xyz),normal);
+	float4 reflColor = texCUBE(cubemapSampler,-refvect.xyz);
 	if(d > 1){
-		return float4(tex2D(colorGBUFF,IN.texcoord).xyz,1);
+		return float4(tex2D(colorGBUFF,tc).xyz,1);
 	} else {
-		return float4(lighting*tex2D(colorGBUFF,IN.texcoord).xyz+(reflColor.xyz*normalSpec.w*tex2D(colorGBUFF,IN.texcoord).xyz)+(tex2D(lightBUFF,IN.texcoord).w*normalSpec.w),1);
+		return float4(lighting*tex2D(colorGBUFF,tc).xyz+(reflColor.xyz*normalSpec.w*tex2D(colorGBUFF,tc).xyz)+(tex2D(lightBUFF,tc).w*normalSpec.w),1);
 	}
 }
-float4 PP2_PS(VS_OUTPUT_POST IN) : COLOR {
-	
+float4 PP2_PS(VS_OUTPUT_POST IN,float2 viewpos:VPOS) : COLOR {
+	float2 blurInvViewDim = float2(1.0/(float)512,1.0/(float)512);
+	float2 tc = viewpos*blurInvViewDim + blurInvViewDim*0.5f;
 	float totStrength = 1.38;
 	float strength = 0.07;
 	float offset = 18.0;
@@ -416,10 +423,10 @@ float4 PP2_PS(VS_OUTPUT_POST IN) : COLOR {
 	  float3(-0.560359,0.2093774,-0.7031121),
 	  float3(0.8116179,0.7803779,-0.9776397),
 	};
-	float3 fres = normalize((tex2D(noiseSampler,512*IN.texcoord/64).xyz*2.0) - 1.0);
-	float3 normal = tex2D(nsGBUFF,IN.texcoord).xyz;
-	float currentPixelDepth = tex2D(shadGBUFF,IN.texcoord).w;
-	float3 ep = float3(IN.texcoord.xy,currentPixelDepth);
+	float3 fres = normalize((tex2D(noiseSampler,512*tc/64).xyz*2.0) - 1.0);
+	float3 normal = tex2D(nsGBUFF,tc).xyz;
+	float currentPixelDepth = tex2D(shadGBUFF,tc).w;
+	float3 ep = float3(tc.xy,currentPixelDepth);
 	
 	float bl = 0.0;
 	float radD = rad/currentPixelDepth;
@@ -454,44 +461,52 @@ float4 PP2_PS(VS_OUTPUT_POST IN) : COLOR {
 	outBounce /= 16;
 	return float4(ao.xxx,1);
 }
-float4 GuassianBlurVertPS(VS_OUTPUT_POST IN,uniform sampler2D sample,uniform int texSize) : COLOR {
+float4 GuassianBlurVertPS(VS_OUTPUT_POST IN,uniform sampler2D sample,uniform int texSize,float2 viewpos:VPOS) : COLOR {
+	float2 blurInvViewDim = float2(1.0/(float)texSize,1.0/(float)texSize);
+	float2 tc = viewpos*blurInvViewDim + blurInvViewDim*0.5f;
 	float3 outColor = 0.0;
 	float blurSize = 1.0/(float)texSize;
-	outColor += tex2D(sample, float2(IN.texcoord.x - 4.0*blurSize, IN.texcoord.y)) * 0.05;
-	outColor += tex2D(sample, float2(IN.texcoord.x - 3.0*blurSize, IN.texcoord.y)) * 0.09;
-	outColor += tex2D(sample, float2(IN.texcoord.x - 2.0*blurSize, IN.texcoord.y)) * 0.12;
-	outColor += tex2D(sample, float2(IN.texcoord.x - blurSize, IN.texcoord.y)) * 0.15;
-	outColor += tex2D(sample, float2(IN.texcoord.x, IN.texcoord.y)) * 0.16;
-	outColor += tex2D(sample, float2(IN.texcoord.x + blurSize, IN.texcoord.y)) * 0.15;
-	outColor += tex2D(sample, float2(IN.texcoord.x + 2.0*blurSize, IN.texcoord.y)) * 0.12;
-	outColor += tex2D(sample, float2(IN.texcoord.x + 3.0*blurSize, IN.texcoord.y)) * 0.09;
-	outColor += tex2D(sample, float2(IN.texcoord.x + 4.0*blurSize, IN.texcoord.y)) * 0.05;
+	outColor += tex2D(sample, float2(tc.x - 4.0*blurSize, tc.y)) * 0.05;
+	outColor += tex2D(sample, float2(tc.x - 3.0*blurSize, tc.y)) * 0.09;
+	outColor += tex2D(sample, float2(tc.x - 2.0*blurSize, tc.y)) * 0.12;
+	outColor += tex2D(sample, float2(tc.x - blurSize, tc.y)) * 0.15;
+	outColor += tex2D(sample, float2(tc.x, tc.y)) * 0.16;
+	outColor += tex2D(sample, float2(tc.x + blurSize, tc.y)) * 0.15;
+	outColor += tex2D(sample, float2(tc.x + 2.0*blurSize, tc.y)) * 0.12;
+	outColor += tex2D(sample, float2(tc.x + 3.0*blurSize, tc.y)) * 0.09;
+	outColor += tex2D(sample, float2(tc.x + 4.0*blurSize, tc.y)) * 0.05;
 	return float4(outColor,1);
 }
-float4 GuassianBlurHorizPS(VS_OUTPUT_POST IN,uniform sampler2D sample,uniform int texSize) : COLOR {
+float4 GuassianBlurHorizPS(VS_OUTPUT_POST IN,uniform sampler2D sample,uniform int texSize,float2 viewpos:VPOS) : COLOR {
+	float2 blurInvViewDim = float2(1.0/(float)texSize,1.0/(float)texSize);
+	float2 tc = viewpos*blurInvViewDim + blurInvViewDim*0.5f;
 	float3 outColor = 0.0;
 	float blurSize = 1.0/(float)texSize;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y - 4.0*blurSize)) * 0.05;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y - 3.0*blurSize)) * 0.09;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y - 2.0*blurSize)) * 0.12;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y - blurSize)) * 0.15;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y)) * 0.16;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y + blurSize)) * 0.15;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y + 2.0*blurSize)) * 0.12;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y + 3.0*blurSize)) * 0.09;
-	outColor += tex2D(sample, float2(IN.texcoord.x,IN.texcoord.y + 4.0*blurSize)) * 0.05;
+	outColor += tex2D(sample, float2(tc.x,tc.y - 4.0*blurSize)) * 0.05;
+	outColor += tex2D(sample, float2(tc.x,tc.y - 3.0*blurSize)) * 0.09;
+	outColor += tex2D(sample, float2(tc.x,tc.y - 2.0*blurSize)) * 0.12;
+	outColor += tex2D(sample, float2(tc.x,tc.y - blurSize)) * 0.15;
+	outColor += tex2D(sample, float2(tc.x,tc.y)) * 0.16;
+	outColor += tex2D(sample, float2(tc.x,tc.y + blurSize)) * 0.15;
+	outColor += tex2D(sample, float2(tc.x,tc.y + 2.0*blurSize)) * 0.12;
+	outColor += tex2D(sample, float2(tc.x,tc.y + 3.0*blurSize)) * 0.09;
+	outColor += tex2D(sample, float2(tc.x,tc.y + 4.0*blurSize)) * 0.05;
 	return float4(outColor,1);
 }
-float4 SSAO_Combine_PassPS(VS_OUTPUT_POST IN) : COLOR {
-	float3 outColor = tex2D(normalscreenSampler, IN.texcoord.xy).xyz*pow(tex2D(blurredSSAO_Sampler, IN.texcoord.xy).x,4.0);
+float4 SSAO_Combine_PassPS(VS_OUTPUT_POST IN,float2 viewpos:VPOS) : COLOR {
+	float2 tc = viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f;
+	float3 outColor = tex2D(normalscreenSampler, tc.xy).xyz*pow(tex2D(blurredSSAO_Sampler, tc.xy).x,4.0);
 	return float4(outColor,1);
 }
-float4 Bloom_treshold_PassPS(VS_OUTPUT_POST IN) : COLOR {
-	float3 outColor = max(tex2D(normalscreenSampler, IN.texcoord.xy).xyz-0.5,0.0);
+float4 Bloom_treshold_PassPS(VS_OUTPUT_POST IN,float2 viewpos:VPOS) : COLOR {
+	float2 blurInvViewDim = float2(1.0/(float)256,1.0/(float)256);
+	float2 tc = viewpos*blurInvViewDim + blurInvViewDim*0.5f;
+	float3 outColor = max(tex2D(normalscreenSampler, tc.xy).xyz-0.5,0.0);
 	return float4(outColor,1);
 }
-float4 Bloom_Combine_PassPS(VS_OUTPUT_POST IN) : COLOR {
-	float3 outColor = tex2D(combinedSSAO_Sampler, IN.texcoord.xy).xyz+tex2D(blurred_Bloom_Sampler, IN.texcoord.xy).xyz;
+float4 Bloom_Combine_PassPS(VS_OUTPUT_POST IN,float2 viewpos:VPOS) : COLOR {
+	float2 tc = viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f;
+	float3 outColor = tex2D(combinedSSAO_Sampler, tc.xy).xyz+tex2D(blurred_Bloom_Sampler, tc.xy).xyz;
 	return float4(outColor,1);
 }
 inline float Luminance( float3 c )

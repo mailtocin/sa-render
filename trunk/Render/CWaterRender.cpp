@@ -7,7 +7,7 @@ IDirect3DTexture9 *CWaterRender::tNormalN;
 IDirect3DTexture9 *CWaterRender::tNormalH1;
 IDirect3DTexture9 *CWaterRender::FoamTexture;
 IDirect3DTexture9 *CWaterRender::FoamTexture2;
-DWORD oDB,oSB,oBO,oAB,oAT;
+DWORD CWaterRender::oDB,CWaterRender::oSB,CWaterRender::oBO,CWaterRender::oAB,CWaterRender::oAT;
 
 bool CWaterRender::Setup()
 {

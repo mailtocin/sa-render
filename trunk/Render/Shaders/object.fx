@@ -2,6 +2,7 @@ float4x4 gmWorldViewProj;
 float4x4 gmWorld;
 float4 gvColor = float4(1,1,1,1);
 float gfSpecularFactor = 0;
+float DPRdirection = 1;
 bool vcol = false;
 texture2D gtDiffuse;
 texture2D gtNormals;
@@ -52,6 +53,11 @@ struct VS_SHADOW_OUTPUT
 	float2 texcoord : TEXCOORD0;
 };
 
+struct VS_REFL_OUTPUT
+{
+    float4 vpos     : POSITION;
+	float3 texcoord : TEXCOORD0;
+};
 struct VS_INPUT
 {
     float4 pos      : POSITION;
@@ -123,15 +129,37 @@ VS_SHADOW_OUTPUT shadowVS(VS_INPUT IN)
     return OUT;
 }
 
-
-
+VS_REFL_OUTPUT ReflectionVS(VS_INPUT IN)
+{
+    VS_REFL_OUTPUT OUT;
+    OUT.vpos=mul(gmWorldViewProj, float4(IN.pos.xyz,1.0));
+	OUT.vpos.z *=DPRdirection;
+	float L = length( OUT.vpos.xyz );
+	OUT.vpos = OUT.vpos / L;
+	
+	OUT.texcoord.z = OUT.vpos.z;
+	OUT.vpos.z += 1;
+	
+	OUT.vpos.xy /= OUT.vpos.z;
+	
+	OUT.vpos.z = (L - 0.1) / (500 - 0.1);
+	OUT.vpos.w = 1;
+	
+	OUT.texcoord.xy = IN.texcoord;
+    return OUT;
+}
+float4 ReflectionPS(VS_REFL_OUTPUT IN) : COLOR
+{
+	float4 texColor = tex2D(gsDiffuse, IN.texcoord.xy);
+	clip(IN.texcoord.z);
+	return texColor;
+}
 float4 shadowPS(VS_SHADOW_OUTPUT IN) : COLOR
 {
 	float4 texColor = tex2D(gsDiffuse, IN.texcoord);
 	clip(texColor.a);
 	return float4(IN.depth,0,0,texColor.a);
 }
-
 Deferred_OUT DeferredPS(VS_DEFERRED_OUTPUT IN)
 {
 	Deferred_OUT OUT;
@@ -167,13 +195,25 @@ technique Shadow
 {
     pass p0
     {
-        VertexShader = compile vs_3_0 shadowVS();
-        PixelShader  = compile ps_3_0 shadowPS();
+        VertexShader = compile vs_2_0 shadowVS();
+        PixelShader  = compile ps_2_0 shadowPS();
 		COLORWRITEENABLE = false;
 		SEPARATEALPHABLENDENABLE=FALSE;
 		AlphaBlendEnable=FALSE;
 		ALPHATESTENABLE=TRUE;
 		SrcBlend = one;
 		DestBlend = zero;
+		Cullmode = ccw;
+    }
+};
+technique Reflection
+{
+    pass p0
+    {
+        VertexShader = compile vs_2_0 ReflectionVS();
+        PixelShader  = compile ps_2_0 ReflectionPS();
+		SEPARATEALPHABLENDENABLE=FALSE;
+		AlphaBlendEnable=FALSE;
+		ALPHATESTENABLE=TRUE;
     }
 };

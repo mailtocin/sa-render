@@ -199,16 +199,10 @@ RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX
 }
 
 HRESULT GetCurrentStates(DWORD *oDB,DWORD *oSB,DWORD *oBO,DWORD *oAB,DWORD *oAT){
-	g_Device->GetRenderState(D3DRS_DESTBLEND,oDB);
-	g_Device->GetRenderState(D3DRS_SRCBLEND,oSB);
-	g_Device->GetRenderState(D3DRS_BLENDOP,oBO);
-	g_Device->GetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
-	return g_Device->GetRenderState(D3DRS_ALPHATESTENABLE,oAT);
+	rwD3D9GetRenderState(D3DRS_DESTBLEND,oDB);
+	return rwD3D9GetRenderState(D3DRS_SRCBLEND,oSB);
 }
 HRESULT SetOldStates(DWORD oDB,DWORD oSB,DWORD oBO,DWORD oAB,DWORD oAT){
-	g_Device->SetRenderState(D3DRS_DESTBLEND,oDB);
-	g_Device->SetRenderState(D3DRS_SRCBLEND,oSB);
-	g_Device->SetRenderState(D3DRS_BLENDOP,oBO);
-	g_Device->SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
-	return g_Device->SetRenderState(D3DRS_ALPHATESTENABLE,oAT);
+	rwD3D9SetRenderState(D3DRS_DESTBLEND,oDB);
+	return rwD3D9SetRenderState(D3DRS_SRCBLEND,oSB);
 }
