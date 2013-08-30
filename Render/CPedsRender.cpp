@@ -20,7 +20,7 @@ void CPedsRender::Patch()
 bool CPedsRender::Setup()
 {
 	ID3DXBuffer *errors;
-	HRESULT result = D3DXCreateEffectFromFile(g_Device,"skin.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	HRESULT result = D3DXCreateEffectFromFile(g_Device,"resources/Shaders/skin.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors, "CPedsRender", "skin", result))
 	{
 		return false;
@@ -49,14 +49,12 @@ void rwD3D9VSGetInverseWorldMatrix(void *inverseWorldMatrix) {
 
 HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9ResEntryHeader *resEntry, RxD3D9InstanceData *instData)
 {
-	DWORD oDB,oSB,oBO,oAB,oAT;
 	UINT passes;
 	D3DXMATRIX world;
 	D3DXCOLOR color;
 	D3DXMATRIX worldViewProj,vp,proj,worldtransp,view;
 	HRESULT result;
 	D3DXVECTOR4 constData[224];
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	g_Device->GetVertexShaderConstantF(5,(float*)constData,224);
 	m_pEffect->SetVectorArray("constdata",constData,224);
 	g_Device->GetTransform(D3DTS_PROJECTION,&proj);
@@ -80,8 +78,10 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 	{
 		CRender::SetTextureMaps((STexture*)instData->material->texture,m_pEffect);
 	}
+	GetCurrentStates();
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
+	m_pEffect->CommitChanges();
 	if(resEntry->indexBuffer)
 	{
 		result = g_Device->DrawIndexedPrimitive((D3DPRIMITIVETYPE)resEntry->primType, instData->baseIndex, 0, instData->numVertices, instData->startIndex, instData->numPrimitives);
@@ -92,6 +92,6 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 	}
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	SetOldStates(oDB,oSB,oBO,oAB,oAT);
+	SetOldStates();
 	return result;
 }

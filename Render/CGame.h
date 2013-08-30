@@ -177,10 +177,11 @@ bool Im2DRenderQuad(float x1, float y1, float x2, float y2, float z, float recip
 D3DXMATRIX *GetWorldTransposedMatrix(D3DXMATRIX *out, RwMatrix *world);
 D3DXMATRIX *getWorldViewProj(D3DXMATRIX *out, RwMatrix *world, D3DXMATRIX *viewProj);
 RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX m_View,D3DXMATRIX m_Projection,float screenW,float screenH);
-HRESULT GetCurrentStates(DWORD *oDB,DWORD *oSB,DWORD *oBO,DWORD *oAB,DWORD *oAT);
-HRESULT SetOldStates(DWORD oDB,DWORD oSB,DWORD oBO,DWORD oAB,DWORD oAT);
+HRESULT GetCurrentStates();
+HRESULT SetOldStates();
 class CGlobalValues
 {
 public:
 	static D3DXVECTOR4 gm_SunPosition;
+	static DWORD gm_BlendStates[27];
 };

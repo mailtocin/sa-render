@@ -31,7 +31,7 @@ void CObjectRender::Patch()
 bool CObjectRender::Setup()
 {
 	ID3DXBuffer *errors;
-	HRESULT result = D3DXCreateEffectFromFile(g_Device,"object.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	HRESULT result = D3DXCreateEffectFromFile(g_Device,"resources/Shaders/object.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors, "CObjectRender", "object", result))
 	{
 		return false;
@@ -75,11 +75,9 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 																	  UINT StartIndex,
 																	  UINT PrimitiveCount)
 {
-	DWORD oDB,oSB,oBO,oAB,oAT;
 	UINT passes;
 	D3DXCOLOR color;
 	D3DXMATRIX vp,worldTransposedMatrix,worldViewProj,world;
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	//rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		CRender::SetTextureMaps((STexture*)g_DefaultRender_ResEntry->meshData.material->texture,m_pEffect);
@@ -96,12 +94,14 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	color.a = (float)g_DefaultRender_ResEntry->meshData.material->color.alpha / 255.0f;
 	m_pEffect->SetVector("gvColor", (D3DXVECTOR4 *)&color);
 	m_pEffect->SetFloat("gfSpecularFactor", 1.0f-(float)g_DefaultRender_ResEntry->meshData.material->m_pReflection->m_ucIntensity* 0.0039215686f);
+	GetCurrentStates();
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
+	m_pEffect->CommitChanges();
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	return SetOldStates(oDB,oSB,oBO,oAB,oAT);
+	return SetOldStates();
 }
 HRESULT __fastcall CObjectRender::DefaultRender_DrawPrimitiveB(int ecx0,
                                  int edx0,
@@ -132,11 +132,9 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 												UINT StartIndex,
 												UINT PrimitiveCount)
 {
-	DWORD oDB,oSB,oBO,oAB,oAT;
 	UINT passes;
 	D3DXCOLOR color;
 	D3DXMATRIX vp,worldViewProj,world;
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	//rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		CRender::SetTextureMaps((STexture*)g_DefaultRender_ResEntry->meshData.material->texture,m_pEffect);
@@ -154,24 +152,24 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	color.a = (float)g_DefaultRender_ResEntry->meshData.material->color.alpha / 255.0f;
 	m_pEffect->SetFloat("gfSpecularFactor", 1.0f-(float)g_DefaultRender_ResEntry->meshData.material->m_pReflection->m_ucIntensity* 0.0039215686f);
 	m_pEffect->SetVector("gvColor", (D3DXVECTOR4 *)&color);
+	GetCurrentStates();
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
+	m_pEffect->CommitChanges();
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	return SetOldStates(oDB,oSB,oBO,oAB,oAT);
+	return SetOldStates();
 }
 
 void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, unsigned __int8 type, char flags)
 {
-	DWORD oDB,oSB,oBO,oAB,oAT;
 	RxD3D9ResEntryHeader *header;
 	RxD3D9InstanceData *mesh;
 	RpMaterial *mat;
 	UINT passes;
 	D3DXMATRIX worldViewProj,vp,world;
 	D3DXCOLOR color;
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	rwD3D9EnableClippingIfNeeded(object, type);
 	//rwD3D9SetRenderState(60, 0xFF000000u); // ?
 	header = &repEntry->header;
@@ -201,8 +199,10 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 		if(flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 			CRender::SetTextureMaps((STexture*)mat->texture,m_pEffect);
 		}
+		GetCurrentStates();
 		m_pEffect->Begin(&passes,0);
 		m_pEffect->BeginPass(0);
+		m_pEffect->CommitChanges();
 		if(header->indexBuffer){
 			rwD3D9DrawIndexedPrimitive(header->primType, mesh->baseIndex, 0, mesh->numVertices, mesh->startIndex, mesh->numPrimitives);
 		}
@@ -210,7 +210,7 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 			rwD3D9DrawPrimitive(header->primType, mesh->baseIndex, mesh->numPrimitives);
 		m_pEffect->EndPass();
 		m_pEffect->End();
+		SetOldStates();
 		++mesh;
 	}
-	SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }

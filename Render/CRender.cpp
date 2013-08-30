@@ -13,6 +13,7 @@
 #include "CSkyRender.h"
 #include "CParticleRender.h"
 #include "CWaterRender.h"
+//#include "CPostProcess.h"
 #include "CGame.h"
 #pragma comment(lib, "D3DDeviceReset.lib")
 
@@ -36,14 +37,15 @@ void CRender::Patch()
 
 void CRender::Setup()
 {
-	D3DXCreateTextureFromFile(g_Device,"normal.tga",&defnormal);
-	D3DXCreateTextureFromFile(g_Device,"spec.tga",&defspec);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/normal.tga",&defnormal);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/spec.tga",&defspec);
 	CDeferredRendering::Setup();
 	CVehicleRender::Setup();
 	CObjectRender::Setup();
 	CPedsRender::Setup();
 	CSkyRender::Setup();
 	CParticleRender::Setup();
+	//CPostProcess::Setup();
 	CWaterRender::Setup();
 }
 
@@ -61,6 +63,7 @@ void CRender::BeforeReset()
 	CPedsRender::Lost();
 	CParticleRender::Lost();
 	CWaterRender::Lost();
+	//CPostProcess::Lost();
 	if(CSkyRender::m_pEffect)
 		CSkyRender::m_pEffect->OnLostDevice();
 }
@@ -73,6 +76,7 @@ void CRender::AfterReset()
 	CPedsRender::Reset();
 	CParticleRender::Reset();
 	CWaterRender::Reset();
+	//CPostProcess::Reset();
 	if(CSkyRender::m_pEffect)
 		CSkyRender::m_pEffect->OnResetDevice();
 }

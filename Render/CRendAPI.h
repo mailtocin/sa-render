@@ -45,7 +45,7 @@ RENDER_API int __cdecl loadINI()
 	char cPath[MAX_PATH];
 	GetModuleFileName(NULL, cPath, MAX_PATH);
 	if (strrchr(cPath, '\\')) *(char*)(strrchr(cPath, '\\') + 1) = '\0';
-	strcat_s(cPath, MAX_PATH, "SARender.ini");
+	strcat_s(cPath, MAX_PATH, "resources/SARender.ini");
 	GetPrivateProfileString("SHADOWS", "MaxShadowDistance", "1500", cStr, 256, cPath);
 	CDeferredRendering::maxShadowDistance = (float)atof(cStr);
 	GetPrivateProfileString("SHADOWS", "ShadowMapSize", "4096", cStr, 256, cPath);
@@ -57,11 +57,10 @@ RENDER_API int __cdecl loadINI()
 
 RENDER_API int __cdecl saveINI()
 {
-	char cStr[256];
 	char cPath[MAX_PATH];
 	GetModuleFileName(NULL, cPath, MAX_PATH);
 	if (strrchr(cPath, '\\')) *(char*)(strrchr(cPath, '\\') + 1) = '\0';
-	strcat_s(cPath, MAX_PATH, "SARender.ini");
+	strcat_s(cPath, MAX_PATH, "resources/SARender.ini");
 	WritePrivateProfileString("SHADOWS", "MaxShadowDistance",std::to_string((long double)CDeferredRendering::maxShadowDistance).c_str(), cPath);
 	WritePrivateProfileString("SHADOWS", "ShadowMapSize", std::to_string((long double)CDeferredRendering::ShadowMapSize).c_str(), cPath);
 	WritePrivateProfileString("SHADOWS", "ShadowBias", std::to_string((long double)CDeferredRendering::ShadowBias).c_str(), cPath);

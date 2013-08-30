@@ -12,16 +12,16 @@ DWORD CWaterRender::oDB,CWaterRender::oSB,CWaterRender::oBO,CWaterRender::oAB,CW
 bool CWaterRender::Setup()
 {
 	ID3DXBuffer *errors;
-	HRESULT result = D3DXCreateEffectFromFile(g_Device,"water.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	HRESULT result = D3DXCreateEffectFromFile(g_Device,"resources/Shaders/water.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors, "CWaterRender", "water", result))
 	{
 		return false;
 	}
-	D3DXCreateTextureFromFile(g_Device,"Water_NormalN.png",&tNormalN);
-	D3DXCreateTextureFromFile(g_Device,"Water_NormalW.png",&tNormalW);
-	D3DXCreateTextureFromFile(g_Device,"Waves.png",&tNormalH1);
-	D3DXCreateTextureFromFile(g_Device,"Foam.png",&FoamTexture);
-	D3DXCreateTextureFromFile(g_Device,"Foam.dds",&FoamTexture2);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/Water_NormalN.png",&tNormalN);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/Water_NormalW.png",&tNormalW);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/Waves.png",&tNormalH1);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/Foam.png",&FoamTexture);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/Foam.dds",&FoamTexture2);
 	return true;
 }
 
@@ -31,7 +31,6 @@ void CWaterRender::InitWaterShader() {
 	UINT p;
 	getWorldViewProj(NULL,NULL,&vp);
 	D3DXMATRIX mView,mInvView;
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	g_Device->GetTransform(D3DTS_VIEW,&mView);
 	D3DXMatrixInverse(&mInvView,NULL,&mView);
 	g_Device->GetTexture(0,&diffuse);
@@ -51,13 +50,14 @@ void CWaterRender::InitWaterShader() {
 	m_pEffect->SetVector("fInverseViewportDimensions",&D3DXVECTOR4(1.0f/RsGlobal->MaximumWidth,1.0f/RsGlobal->MaximumHeight,0.0f,0.0f));
 	m_pEffect->SetFloat("time",f_Time);
 	m_pEffect->SetTechnique("Forward");
+	GetCurrentStates();
 	m_pEffect->Begin(&p,0);
 	m_pEffect->BeginPass(0);
 }
 void CWaterRender::DeInitWaterShader() {
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	SetOldStates(oDB,oSB,oBO,oAB,oAT);
+	SetOldStates();
 }
 void CWaterRender::Reset()
 {

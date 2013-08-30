@@ -11,12 +11,12 @@ LPD3DXMESH CSkyRender::skySphere;
 bool CSkyRender::Setup()
 {
 	ID3DXBuffer *errors;
-	HRESULT result = D3DXCreateEffectFromFile(g_Device,"sky.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	HRESULT result = D3DXCreateEffectFromFile(g_Device,"resources/Shaders/sky.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors,"CSkyRender","sky.fx",result))
 	{
 		return false;
 	}
-	D3DXCreateTextureFromFile(g_Device,"clouds.tga",&CloudTex);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/clouds.tga",&CloudTex);
 	return true;
 }
 struct _VERTEX {
@@ -70,8 +70,6 @@ void CSkyRender::PreRender(D3DXVECTOR4 *pos,D3DXMATRIX *viewproj)
 void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 {
 	UINT passes;
-	DWORD oDB,oSB,oBO,oAB,oAT;
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	m_pEffect->SetTechnique("Sky");
 	m_pEffect->SetTexture("cloudTex",CloudTex);
 	m_pEffect->SetVector("lightDirection",lightDirection);
@@ -79,26 +77,28 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 													(float)Timecycle->m_nCurrentSkyTopGreen/255.0f,
 													(float)Timecycle->m_nCurrentSkyTopBlue/255.0f,
 													1.0f));
-	m_pEffect->SetVector("skyColorTop",&D3DXVECTOR4((float)Timecycle->m_nCurrentSkyBottomRed/255.0f,
+	m_pEffect->SetVector("skyColorBottom",&D3DXVECTOR4((float)Timecycle->m_nCurrentSkyBottomRed/255.0f,
 													(float)Timecycle->m_nCurrentSkyBottomGreen/255.0f,
 													(float)Timecycle->m_nCurrentSkyBottomBlue/255.0f,
 													1.0f));
-	m_pEffect->SetVector("TopCloudColor",&D3DXVECTOR4((float)Timecycle->m_nCurrentSkyTopRed/255.0f,
-													  (float)Timecycle->m_nCurrentSkyTopGreen/255.0f,
-													  (float)Timecycle->m_nCurrentSkyTopBlue/255.0f,
+	m_pEffect->SetVector("TopCloudColor",&D3DXVECTOR4((float)Timecycle->m_nCurrentFluffyCloudsBottomRed/255.0f,
+													  (float)Timecycle->m_nCurrentFluffyCloudsBottomGreen/255.0f,
+													  (float)Timecycle->m_nCurrentFluffyCloudsBottomBlue/255.0f,
 													  1.0f));
 	m_pEffect->SetFloat("fCloudCover",Timecycle->m_fAlpha1/255.0f);
 	m_pEffect->SetFloat("fCloud1Transp",Timecycle->m_fCloudAlpha1/255.0f);
 	m_pEffect->SetMatrix("gmWorldViewProj",&gm_WorldViewProjection);
 	m_pEffect->SetMatrix("gmWorld",&gm_World);
+	GetCurrentStates();
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
+	m_pEffect->CommitChanges();
 	if(skySphere){
 		skySphere->DrawSubset(0);
 	}
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	SetOldStates(oDB,oSB,oBO,oAB,oAT);
+	SetOldStates();
 }
 void CSkyRender::Release()
 {
