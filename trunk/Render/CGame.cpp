@@ -1,5 +1,6 @@
 #include "CGame.h"
 D3DXVECTOR4 CGlobalValues::gm_SunPosition;
+DWORD CGlobalValues::gm_BlendStates[27];
 bool GetSunPosn(CVector *dst)
 {
 	float sunDistance;
@@ -198,11 +199,29 @@ RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX
 	return bbox2D;
 }
 
-HRESULT GetCurrentStates(DWORD *oDB,DWORD *oSB,DWORD *oBO,DWORD *oAB,DWORD *oAT){
-	rwD3D9GetRenderState(D3DRS_DESTBLEND,oDB);
-	return rwD3D9GetRenderState(D3DRS_SRCBLEND,oSB);
+HRESULT GetCurrentStates(){
+	rwD3D9GetRenderState(D3DRS_DESTBLEND,&CGlobalValues::gm_BlendStates[0]);
+	rwD3D9GetRenderState(D3DRS_ALPHATESTENABLE,&CGlobalValues::gm_BlendStates[1]);
+	rwD3D9GetRenderState(D3DRS_ALPHABLENDENABLE,&CGlobalValues::gm_BlendStates[2]);
+	rwD3D9GetRenderState(D3DRS_ZENABLE,&CGlobalValues::gm_BlendStates[5]);
+	rwD3D9GetRenderState(D3DRS_ZWRITEENABLE,&CGlobalValues::gm_BlendStates[6]);
+	rwD3D9GetRenderState(D3DRS_CULLMODE,&CGlobalValues::gm_BlendStates[7]);
+	rwD3D9GetRenderState(D3DRS_SEPARATEALPHABLENDENABLE,&CGlobalValues::gm_BlendStates[8]);
+	rwD3D9GetRenderState(D3DRS_SCISSORTESTENABLE,&CGlobalValues::gm_BlendStates[9]);
+	rwD3D9GetRenderState(D3DRS_SRGBWRITEENABLE,&CGlobalValues::gm_BlendStates[10]);
+	rwD3D9GetRenderState(D3DRS_FOGENABLE,&CGlobalValues::gm_BlendStates[11]);
+	return rwD3D9GetRenderState(D3DRS_SRCBLEND,&CGlobalValues::gm_BlendStates[4]);
 }
-HRESULT SetOldStates(DWORD oDB,DWORD oSB,DWORD oBO,DWORD oAB,DWORD oAT){
-	rwD3D9SetRenderState(D3DRS_DESTBLEND,oDB);
-	return rwD3D9SetRenderState(D3DRS_SRCBLEND,oSB);
+HRESULT SetOldStates(){
+	rwD3D9SetRenderState(D3DRS_DESTBLEND,CGlobalValues::gm_BlendStates[0]);
+	rwD3D9SetRenderState(D3DRS_ALPHATESTENABLE,CGlobalValues::gm_BlendStates[1]);
+	rwD3D9SetRenderState(D3DRS_ALPHABLENDENABLE,CGlobalValues::gm_BlendStates[2]);
+	rwD3D9SetRenderState(D3DRS_ZENABLE,CGlobalValues::gm_BlendStates[5]);
+	rwD3D9SetRenderState(D3DRS_ZWRITEENABLE,CGlobalValues::gm_BlendStates[6]);
+	rwD3D9SetRenderState(D3DRS_CULLMODE,CGlobalValues::gm_BlendStates[7]);
+	rwD3D9SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE,CGlobalValues::gm_BlendStates[8]);
+	rwD3D9SetRenderState(D3DRS_SCISSORTESTENABLE,CGlobalValues::gm_BlendStates[9]);
+	rwD3D9SetRenderState(D3DRS_SRGBWRITEENABLE,CGlobalValues::gm_BlendStates[10]);
+	rwD3D9SetRenderState(D3DRS_FOGENABLE,CGlobalValues::gm_BlendStates[11]);
+	return rwD3D9SetRenderState(D3DRS_SRCBLEND,CGlobalValues::gm_BlendStates[4]);
 }

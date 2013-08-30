@@ -64,19 +64,19 @@ bool CDeferredRendering::Setup()
 	HRESULT result;
 	m_vUpVector = new D3DXVECTOR3(0, 0, 1);
 	// Loading shader... TODO: Load it from folder...
-	result = D3DXCreateEffectFromFile(g_Device,"deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	result = D3DXCreateEffectFromFile(g_Device,"resources/Shaders/deferred.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors, "CDeferredRendering", "deferred", result))	{
 		return false;
 	}
 //-------------------------Loading textures-------------------------------
-	D3DXCreateTextureFromFile(g_Device,"noise.png",&noise);
-	D3DXCreateCubeTextureFromFile(g_Device,"grace_diffuse_cube.dds",&cubemap);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/noise.png",&noise);
+	D3DXCreateCubeTextureFromFile(g_Device,"resources/Textures/grace_diffuse_cube.dds",&cubemap);
 //------------------------------------------------------------------------
 	char cStr[256];
 	char cPath[MAX_PATH];
 	GetModuleFileName(NULL, cPath, MAX_PATH);
 	if (strrchr(cPath, '\\')) *(char*)(strrchr(cPath, '\\') + 1) = '\0';
-	strcat_s(cPath, MAX_PATH, "SARender.ini");
+	strcat_s(cPath, MAX_PATH, "resources/SARender.ini");
 	GetPrivateProfileString("SHADOWS", "MaxShadowDistance", "1500", cStr, 256, cPath);
 	maxShadowDistance = (float)atof(cStr);
 	GetPrivateProfileString("SHADOWS", "ShadowMapSize", "4096", cStr, 256, cPath);
@@ -125,7 +125,7 @@ void CDeferredRendering::Reset()
 
 //--------------------Full-Screen Quad Drawing Function-------------------
 void DrawFullScreenQuad() {
-	IDirect3DVertexDeclaration9*  VertDecl = NULL;
+	IDirect3DVertexDeclaration9*  VertDecl = NULL,*oldVertDecl = NULL;
 	struct Vertex {
 		D3DXVECTOR2 pos;
 		D3DXVECTOR2 tex_coord;
@@ -144,23 +144,32 @@ void DrawFullScreenQuad() {
 	};
 	g_Device->CreateVertexDeclaration( Decl, &VertDecl );
 	// 3) Finnaly we need to set it all and draw it.
+	g_Device->GetVertexDeclaration(&oldVertDecl);
 	g_Device->SetVertexDeclaration(VertDecl);
 	rwD3D9SetRenderState(D3DRS_CULLMODE,rwCULLMODECULLNONE);
 	
 	g_Device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex));
 	// 4) And don't forget to release it, otherwise you can crash.
 	SAFE_RELEASE(VertDecl);
+	g_Device->SetVertexDeclaration(oldVertDecl);
 }
 //------------------------------------------------------------------------
 
 // Post-Process Drawing Pass.... TODO: idk what to do with it... maybe make passes count in value?
 void CDeferredRendering::DrawPostProcessPass() {
 	UINT pPasses;				  // Pass count - unused but we can set it to use
+	DWORD dwOldFVF;
+	const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
+	g_Device->GetFVF(&dwOldFVF);
+	g_Device->SetFVF(dwFVF_POST);
+	GetCurrentStates();
 	m_pEffect->Begin(&pPasses,0); // This function begin effect using and outputs pass count.
 	m_pEffect->BeginPass(0);	  // This function begins pass(here we use only first pass for now).
 	DrawFullScreenQuad();		  // Call Full-Screen Quad Drawing Function to draw Full-Screen Quad!
 	m_pEffect->EndPass();		  // This function ends current pass. Don't forget it!
 	m_pEffect->End();			  // This function ends effect using. Don't forget it!
+	SetOldStates();
+	g_Device->SetFVF(dwOldFVF);
 }
 
 //--------------------------On Lost Device--------------------------------
@@ -177,9 +186,11 @@ void CDeferredRendering::Lost()
 	SAFE_RELEASE(lightingSurface);
 	SAFE_RELEASE(lightingTexture);
 	//SAFE_RELEASE(cubemap);
-	for(int i = 0; i<ppTCcount;i++){
-		SAFE_RELEASE(rsTmpSurface[i]);
-		SAFE_RELEASE(rtTmpSurface[i]);
+	if(ppTCcount>0){
+		for(int i = 0; i<ppTCcount;i++){
+			SAFE_RELEASE(rsTmpSurface[i]);
+			SAFE_RELEASE(rtTmpSurface[i]);
+		}
 	}
 	if(m_pEffect)
 		m_pEffect->OnLostDevice();
@@ -262,7 +273,7 @@ void CalculateSplitDistances()
 
   //m_faSplitDistances[0] = 0.1f;
   //m_faSplitDistances[4] = CDeferredRendering::maxShadowDistance;
-	m_faSplitDistances[0] = Scene->m_pRwCamera->nearPlane;
+	m_faSplitDistances[0] = -10.0f;
     m_faSplitDistances[1] = Scene->m_pRwCamera->nearPlane + 25.0f;
     m_faSplitDistances[2] = m_faSplitDistances[1] + (CDeferredRendering::maxShadowDistance - m_faSplitDistances[1]) * 0.3f;
     m_faSplitDistances[3] = m_faSplitDistances[1] + (CDeferredRendering::maxShadowDistance - m_faSplitDistances[1]) * 0.6f;
@@ -436,11 +447,13 @@ void CDeferredRendering::Idle(void *a)
 //---------------------------Initialization------------------------------
 		CVehicleRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CVehicleRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
-		CVehicleRender::m_pEffect->SetTexture("noise",noise);
+		CVehicleRender::m_pEffect->SetTexture("gtNoise",noise);
 		CObjectRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CObjectRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
+		CObjectRender::m_pEffect->SetTexture("gtNoise",noise);
 		CPedsRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CPedsRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
+		CPedsRender::m_pEffect->SetTexture("gtNoise",noise);
 		RwCameraEndUpdate(Scene->m_pRwCamera);
 		for(int i =0;i<8;i+=2){
 			if(!shadow[i]){
@@ -468,7 +481,7 @@ void CDeferredRendering::Idle(void *a)
 			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&reflectionTexture,NULL);
 			reflectionTexture->GetSurfaceLevel(0,&reflectionSurface);
 		}*/
-		if(ppTCcount>1) {
+		if(ppTCcount>0) {
 			for(int i = 0; i<ppTCcount;i++) {
 				if(!rtTmpSurface[i]) {
 					g_Device->CreateTexture(surfWidth[i] == -1? RsGlobal->MaximumWidth:surfWidth[i],surfHeight[i] == -1? RsGlobal->MaximumHeight:surfHeight[i],0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&rtTmpSurface[i],NULL);
@@ -514,11 +527,8 @@ void CDeferredRendering::Idle(void *a)
 		g_Device->GetRenderTarget(0, &pOldRTSurf);
 		pOldRTSurf->Release();
 		g_Device->SetRenderTarget(0,gbSurface[0]);
-		//CurrentRenderSurface[0] = gbSurface[0];
 		g_Device->SetRenderTarget(1,gbSurface[1]);
-		//CurrentRenderSurface[1] = gbSurface[1];
 		g_Device->SetRenderTarget(2,gbSurface[2]);
-		//CurrentRenderSurface[2] = gbSurface[2];
 		g_Device->Clear(0,NULL,D3DCLEAR_STENCIL||D3DCLEAR_TARGET||D3DCLEAR_ZBUFFER,cc,1,0);
 		//RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
 		CObjectRender::m_pEffect->SetTechnique("Deferred");
@@ -535,7 +545,7 @@ void CDeferredRendering::Idle(void *a)
 		ambientColor2.b = (float)Timecycle->m_fCurrentAmbientObjBlue;
 		ambientColor2.a = 1.0;
 		m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);
-		m_pEffect->SetVector("fInverseViewportDimensions", &D3DXVECTOR4(1.0f/(float)oldWidth,1.0f/(float)oldHeight,1,1));
+		m_pEffect->SetVector("fInverseViewportDimensions", &D3DXVECTOR4(1.0f/(float)RsGlobal->MaximumWidth,1.0f/(float)RsGlobal->MaximumHeight,1,1));
 		m_pEffect->SetMatrix("gmViewProj",&viewproj);
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
@@ -547,13 +557,11 @@ void CDeferredRendering::Idle(void *a)
 		RwCameraEndUpdate(Scene->m_pRwCamera);
 		CSkyRender::Release();
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
-		DWORD dwOldFVF;
-		DWORD oDB,oSB,oBO,oAB,oAT;
-		const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
+		
+		//
+		
 //-------------------Render Deferred Lighting----------------------------
-		g_Device->GetFVF(&dwOldFVF);
-		GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
-		g_Device->SetFVF(dwFVF_POST);
+		
 		m_pEffect->SetTechnique("DefShad");
 		D3DXMATRIX m_LightViewProj[4];
 		g_Device->SetRenderTarget(0,lightingSurface);
@@ -575,7 +583,7 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetTexture("test3",shadow[5]);
 		m_pEffect->SetTexture("test4",shadow[7]);
 		m_pEffect->SetVector("SunColor",&D3DXVECTOR4(1-(*_daylightLightingState),1-(*_daylightLightingState),1-(*_daylightLightingState),1-(*_daylightLightingState)));
-		m_pEffect->SetVector("ShadowParams",&D3DXVECTOR4(ShadowMapSize,1.0f/(float)ShadowMapSize,ShadowBias,1));
+		m_pEffect->SetVector("ShadowParams",&D3DXVECTOR4((float)ShadowMapSize,1.0f/(float)ShadowMapSize,ShadowBias,1.0f));
 		m_pEffect->SetVector("g_fSplitDistances",&D3DXVECTOR4(m_faSplitDistances[1],
 															  m_faSplitDistances[2],
 															  m_faSplitDistances[3],
@@ -606,21 +614,23 @@ void CDeferredRendering::Idle(void *a)
 		}
 //----------------------------------------------------------------------
 //-----------Post-Processing and Alpha-Blended Stuff---------------------
-		g_Device->SetRenderTarget(0,rsTmpSurface[0]);
+		g_Device->SetRenderTarget(0,ppTCcount>0? rsTmpSurface[0]:pOldRTSurf);
 		m_pEffect->SetTexture("lightBuffer",lightingTexture);
 		m_pEffect->SetTechnique("DefShadL");
 		DrawPostProcessPass();
-		PostProcess(pOldRTSurf);
-		g_Device->SetFVF(dwOldFVF);
-		SetOldStates(oDB,oSB,oBO,oAB,oAT);
+		if(ppTCcount>0){
+			PostProcess(pOldRTSurf);
+		}
+		
+		//SetOldStates(oDB,oSB,oBO,oAB,oAT);
 		CParticleRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
 		CWaterRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
 		CWaterRender::m_pEffect->SetTexture("tScreen",gbuffer[0]);
 		CWaterRender::m_pEffect->SetTexture("tRefl",reflectionTexture);
 		CWaterRender::m_pEffect->SetMatrix("gmRefl",&g_mReflViewProj);
-		CImmediateRender::m_nCurrentRendering = IM_RENDER_WATER;
-		RenderWater();
-		CImmediateRender::m_nCurrentRendering = IM_RENDER_PARTICLES;
+		//CImmediateRender::m_nCurrentRendering = IM_RENDER_WATER;
+		//RenderWater();
+		//CImmediateRender::m_nCurrentRendering = IM_RENDER_PARTICLES;
 		RenderEffects();
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )
 			SetCameraMotionBlurAlpha(TheCamera, 150); // CCamera::SetMotionBlurAlpha
@@ -670,11 +680,11 @@ void CDeferredRendering::RenderScene()
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void *)TRUE);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void *)TRUE);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESHADEMODE, (void *)rwSHADEMODEGOURAUD);*/
-	UpdateSunLightForCustomRenderingPipeline();
+	//UpdateSunLightForCustomRenderingPipeline();
 	RenderRoads();                      // CRenderer::RenderRoads
 	//RenderCoronasReflections();         // CCoronas::RenderReflections
 	RenderEverythingBarRoads();         // CRenderer::RenderEverythingBarRoads
-	RenderBrokenObjects(byte_BB4240, 0);
+	//RenderBrokenObjects(byte_BB4240, 0);
 	RenderFadingInUnderwaterEntities(); // CRenderer::RenderFadingInUnderwaterEntities
 	/*if(gCameraSeaDepth <= 0.0)
 	{
@@ -701,7 +711,7 @@ void CDeferredRendering::RenderScene()
 		RwCameraSetNearClipPlane(Scene->m_pRwCamera, Scene->m_pRwCamera->nearPlane);
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
 	}*/
-	RenderBrokenObjects(byte_BB4240, 1);
+	//RenderBrokenObjects(byte_BB4240, 1);
 	//RenderGrass(); // CGrass::Render
 	/*RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void *)rwCULLMODECULLNONE);
 	if(!gOcclReflectionsState)
@@ -729,29 +739,29 @@ void __declspec(naked)CDeferredRendering::RenderParticlesType0()
 
 void CDeferredRendering::RenderEffects()
 {
-	/*RenderBirds();        // CBirds::Render
+	RenderBirds();        // CBirds::Render
 	RenderSkidmarks();    // CSkidmarks::Render
 	RenderRopes();        // CRopes::Render
 	RenderGlass();        // CGlass::Render
-	sub_733800();*/
-	RenderCoronas();      // CCoronas::Render
+	sub_733800();
+	//RenderCoronas();      // CCoronas::Render
 	RenderParticlesType0();
-	/*RenderWaterCannons(); // CWaterCannons::Render
+	RenderWaterCannons(); // CWaterCannons::Render
 	sub_6E7760();
 	RenderCloudMasked();
 	RenderHighClouds();
-	if(gNumCreatedHeliLights || gNumCreatedSearchlights)
+	/*if(gNumCreatedHeliLights || gNumCreatedSearchlights)
 	{
-		//SetRenderStatesForSpotLights();
+		SetRenderStatesForSpotLights();
 		RenderHeliLights();   // CHeliLights::RenderAll
 		RenderSearchlights(); // CSearchlights::RenderAll
-		//ResetRenderStatesForSpotLights();
+		ResetRenderStatesForSpotLights();
 	}*/
-	//RenderWeaponEffects(); // CWeaponEffects::Render
-	//if(gReplayMode != 1 && !GetPad(0)->field_10E) // CReplay::Mode  CPad::GetPad
-	//	RenderWeaponTargetTriangle(FindPlayerPed(-1));
-	//RenderSpecialFX();          // CSpecialFX::Render
-	//RenderFogEffect();          // CPointLights::RenderFogEffect
-	//RenderFirstPersonVehicle(); // CRenderer::RenderFirstPersonVehicle
+	RenderWeaponEffects(); // CWeaponEffects::Render
+	if(gReplayMode != 1 && !GetPad(0)->field_10E) // CReplay::Mode  CPad::GetPad
+		RenderWeaponTargetTriangle(FindPlayerPed(-1));
+	RenderSpecialFX();          // CSpecialFX::Render
+	RenderFogEffect();          // CPointLights::RenderFogEffect
+	RenderFirstPersonVehicle(); // CRenderer::RenderFirstPersonVehicle
 	//RenderPostProcess();
 }

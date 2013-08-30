@@ -6,7 +6,7 @@ DWORD CParticleRender::oDB,CParticleRender::oSB,CParticleRender::oBO,CParticleRe
 bool CParticleRender::Setup()
 {
 	ID3DXBuffer *errors;
-	HRESULT result = D3DXCreateEffectFromFile(g_Device,"particle.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	HRESULT result = D3DXCreateEffectFromFile(g_Device,"resources/Shaders/particle.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors, "CParticleRender", "particle", result))
 	{
 		return false;
@@ -20,7 +20,6 @@ void CParticleRender::InitParticleShader() {
 	UINT p;
 	getWorldViewProj(NULL,NULL,&vp);
 	D3DXMATRIX mView;
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	g_Device->GetTransform(D3DTS_VIEW,&mView);
     D3DXVECTOR3 vRight( mView._11, mView._21, mView._31 );
     D3DXVECTOR3 vUp( mView._12, mView._22, mView._32 );
@@ -45,17 +44,15 @@ void CParticleRender::InitParticleShader() {
 	ambientColor2.a = 1.0;
 	m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);
 	m_pEffect->SetTechnique("Forward");
+	GetCurrentStates();
 	m_pEffect->Begin(&p,0);
 	m_pEffect->BeginPass(0);
-	rwD3D9SetRenderState(D3DRS_DESTBLEND,oDB);
-	rwD3D9SetRenderState(D3DRS_SRCBLEND,oSB);
-	rwD3D9SetRenderState(D3DRS_BLENDOP,oBO);
-	rwD3D9SetRenderState(D3DRS_ALPHABLENDENABLE,oAB);
+	m_pEffect->CommitChanges();
 }
 void CParticleRender::DeInitParticleShader() {
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	SetOldStates(oDB,oSB,oBO,oAB,oAT);
+	SetOldStates();
 }
 void CParticleRender::Reset()
 {

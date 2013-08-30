@@ -164,6 +164,9 @@
     <ClInclude Include="CRendAPI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Initialise.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Library Include="rtworld.lib">
@@ -176,6 +179,9 @@
       <Filter>Resource Files</Filter>
     </Library>
     <Library Include="D3DDeviceReset.lib">
+      <Filter>Resource Files</Filter>
+    </Library>
+    <Library Include="Initialise.lib">
       <Filter>Resource Files</Filter>
     </Library>
   </ItemGroup>

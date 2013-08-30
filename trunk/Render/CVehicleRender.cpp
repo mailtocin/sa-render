@@ -16,7 +16,7 @@ void CVehicleRender::Patch()
 bool CVehicleRender::Setup()
 {
 	ID3DXBuffer *errors;
-	HRESULT result = D3DXCreateEffectFromFile(g_Device,"vehicle.fx", 0, 0, 0, 0, &m_pEffect, &errors);
+	HRESULT result = D3DXCreateEffectFromFile(g_Device,"resources/Shaders/vehicle.fx", 0, 0, 0, 0, &m_pEffect, &errors);
 	if(!CDebug::CheckForShaderErrors(errors, "CVehicleRender", "vechicle", result))
 	{
 		return false;
@@ -38,12 +38,10 @@ void CVehicleRender::Lost()
 
 void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned char type, char flags)
 {
-	DWORD oDB,oSB,oBO,oAB,oAT;
 	D3DXCOLOR vehicleColor;
 	RxD3D9InstanceData *mesh;
 	UINT passes;
 	D3DXMATRIX worldViewProj,vp,world;
-	GetCurrentStates(&oDB,&oSB,&oBO,&oAB,&oAT);
 	RpGeometry *geometry = atomic->geometry;
 	unsigned int geometryFlags = geometry->flags;
 	rwD3D9EnableClippingIfNeeded(atomic, type);
@@ -70,8 +68,10 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 		if(flags & (rpGEOMETRYTEXTURED2|rpGEOMETRYTEXTURED)) {
 			CRender::SetTextureMaps((STexture*)mesh->material->texture,m_pEffect);
 		}
+		GetCurrentStates();
 		m_pEffect->Begin(&passes,0);
 		m_pEffect->BeginPass(0);
+		m_pEffect->CommitChanges();
 		if(repEntry->header.indexBuffer)
 		{
 			rwD3D9DrawIndexedPrimitive(repEntry->header.primType, mesh->baseIndex, 0, mesh->numVertices,
@@ -81,7 +81,7 @@ void CVehicleRender::RenderCB(RwResEntry *repEntry, RpAtomic *atomic, unsigned c
 			rwD3D9DrawPrimitive(repEntry->header.primType, mesh->baseIndex, mesh->numPrimitives);
 		m_pEffect->EndPass();
 		m_pEffect->End();
+		SetOldStates();
 		mesh++;
 	}
-	SetOldStates(oDB,oSB,oBO,oAB,oAT);
 }
