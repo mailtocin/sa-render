@@ -320,9 +320,9 @@ float GetShadow(half fSplitIndex, float4 faSplitUV[4])
 {
 	float fShadow;
 	if(fSplitIndex>=3) {
-		fShadow = tex2Dproj(test4Sampler, faSplitUV[fSplitIndex]);
+		fShadow = sampleShadow(test4Sampler, faSplitUV[fSplitIndex]);
 	} else if(fSplitIndex>=2) {
-		fShadow = tex2Dproj(test3Sampler, faSplitUV[fSplitIndex]);
+		fShadow = sampleShadow(test3Sampler, faSplitUV[fSplitIndex]);
 	} else if(fSplitIndex>=1) {
 		fShadow = sampleShadow(test2Sampler, faSplitUV[fSplitIndex]);
 	} else {
@@ -568,39 +568,33 @@ technique DefShad {
 	pass p0 {
 		VertexShader = compile vs_3_0 mainVS();
 		PixelShader  = compile ps_3_0 mainPS();
-		ZEnable=FALSE;
-		CullMode=NONE;
-		ALPHATESTENABLE=FALSE;
-		SEPARATEALPHABLENDENABLE=FALSE;
-		AlphaBlendEnable=FALSE;
-		FogEnable=FALSE;
-		SRGBWRITEENABLE=FALSE;
+		AlphaTestEnable = false;
+		AlphaBlendEnable = false;
+		ZEnable = false;
+		ZWriteEnable = false;
 	}
 };
 technique DefShadPL {
 	pass p0 {
 		VertexShader = compile vs_3_0 mainVS();
 		PixelShader  = compile ps_3_0 mainPL_PS();
-		ZEnable=FALSE;
 		AlphaTestEnable = false;
 		AlphaBlendEnable = true;
-		SrcBlend = ONE;
-		DestBlend = ONE;
-		CullMode		= None;
-		SCISSORTESTENABLE = true;
+		ZEnable = false;
+		ZWriteEnable = false;
+		ScissorTestEnable = true;
+		SrcBlend = One;
+		DestBlend = One;
 	}
 };
 technique DefShadL {
 	pass p0 {
 		VertexShader = compile vs_3_0 mainVS();
 		PixelShader  = compile ps_3_0 mainL_PS();
-		ZEnable=FALSE;
-		CullMode=NONE;
-		ALPHATESTENABLE=FALSE;
-		SEPARATEALPHABLENDENABLE=FALSE;
-		AlphaBlendEnable=FALSE;
-		FogEnable=FALSE;
-		SRGBWRITEENABLE=FALSE;
+		AlphaTestEnable = false;
+		AlphaBlendEnable = false;
+		ZEnable = false;
+		ZWriteEnable = false;
 	}
 };
 technique PostProcess_0 {

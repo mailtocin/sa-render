@@ -96,15 +96,32 @@ float4 ForwardPS(VS_OUTPUT IN,float2 viewpos:VPOS) : COLOR0
 	worldnorm = -norm.x * g_vRight;
     worldnorm += norm.y * g_vUp;
     worldnorm += -norm.z * g_vForward;
-	float3 lighting = max(dot(normalize(worldnorm),-normalize(g_LightDir-IN.wpos)),0.0f)+lerp(gvAmbientColor,gvAmbientColor2,saturate(worldnorm.z))*0.5f;
+	float3 lighting = max(dot(normalize(worldnorm),-normalize(g_LightDir-IN.wpos)),0.0f)+gvAmbientColor2*0.5f;
 	float depthFade = 1;
 	float depth = tex2D(gsDepth,viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f).w;
 	float4 depthViewSample = float4( viewpos, depth, 1 );
     float4 depthViewParticle = float4( viewpos, IN.texcoord.z, 1 );
 	float depthDiff = depthViewSample.z/depthViewSample.w - depthViewParticle.z/depthViewParticle.w;
 	depthFade = saturate( depthDiff / 1.2f );
+	float lum = dot(texColor.xyz,float3(0.22, 0.707, 0.071));
+	texColor.w*=(texColor.w>=0.9)?lum:1;
 	texColor.w*=depthFade;
 	return float4(texColor.xyz*lighting*IN.color.xyz,texColor.w*IN.color.w);
+}
+
+float4 ForwardAdditivePS(VS_OUTPUT IN,float2 viewpos:VPOS) : COLOR0
+{
+	float4 texColor = tex2D(gsDiffuse, IN.texcoord.xy);
+	float depthFade = 1;
+	float depth = tex2D(gsDepth,viewpos*fInverseViewportDimensions + fInverseViewportDimensions*0.5f).w;
+	float4 depthViewSample = float4( viewpos, depth, 1 );
+    float4 depthViewParticle = float4( viewpos, IN.texcoord.z, 1 );
+	float depthDiff = depthViewSample.z/depthViewSample.w - depthViewParticle.z/depthViewParticle.w;
+	depthFade = saturate( depthDiff / 1.2f );
+	float lum = dot(texColor.xyz,float3(0.22, 0.707, 0.071));
+	texColor.w*=(texColor.w>=0.9)?lum:1;
+	texColor.w*=depthFade;
+	return float4(texColor.xyz*IN.color.xyz,IN.color.w*texColor.w);
 }
 
 technique Forward
@@ -113,14 +130,24 @@ technique Forward
     {
         VertexShader = compile vs_3_0 ForwardVS();
         PixelShader  = compile ps_3_0 ForwardPS();
-		CULLMODE = none;
-		SCISSORTESTENABLE = FALSE;
-		AlphaBlendEnable=TRUE;
-		ALPHATESTENABLE=FALSE;
-		ZEnable=TRUE;
-		//ALPHAFUNC = GREATEREQUAL;
-		//ALPHAREF = 0x0000000F;
-		//SrcBlend = SRCALPHA;
-		//DestBlend = INVSRCALPHA;
+		AlphaTestEnable = false;
+		AlphaBlendEnable = true;
+		ZEnable = true;
+		ZWriteEnable = false;
+    }
+};
+
+technique ForwardAdditive
+{
+    pass p0
+    {
+        VertexShader = compile vs_3_0 ForwardVS();
+        PixelShader  = compile ps_3_0 ForwardAdditivePS();
+		AlphaTestEnable = false;
+		AlphaBlendEnable = true;
+		ZEnable = true;
+		ZWriteEnable = false;
+		SrcBlend = InvDestColor;
+		DestBlend = One;
     }
 };

@@ -252,11 +252,7 @@ technique Forward
     {
         VertexShader = compile vs_3_0 ForwardVS();
         PixelShader  = compile ps_3_0 ForwardPS();
-		CULLMODE = none;
-		SCISSORTESTENABLE = FALSE;
-		AlphaBlendEnable	= true;
-		AlphaTestEnable	= false;
-		SrcBlend					= SrcAlpha;
-		DestBlend					= InvSrcAlpha;
+		AlphaTestEnable = false;
+		AlphaBlendEnable = true;
     }
 };

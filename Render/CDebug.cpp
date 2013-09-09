@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 FILE *CDebug::m_pVertexDeclarationFile;
+FILE *CDebug::m_pBlendStateFile;
 
 void CDebug::Initialize()
 {
@@ -10,6 +11,9 @@ void CDebug::Initialize()
 
     #if defined(DEBUG_VERTEX_DECLARATION)
        m_pVertexDeclarationFile = fopen("sa_render_DebugVD.txt", "w");
+    #endif
+	#if defined(DEBUG_BLEND_STATES)
+       m_pBlendStateFile = fopen("sa_render_DebugBS.txt", "w");
     #endif
 
 #endif
@@ -39,8 +43,11 @@ void CDebug::Shutdown()
 // Closing all files - here!
 #if defined(DEBUG_ENABLED)
 
-    #if defined(DEBUG_VERTEX_DECLARATION)
+   #if defined(DEBUG_VERTEX_DECLARATION)
        fclose(m_pVertexDeclarationFile);
+   #endif
+   #if defined(DEBUG_BLEND_STATES)
+       fclose(m_pBlendStateFile);
    #endif
 
 #endif
@@ -61,6 +68,16 @@ void CDebug::StoreVertexDeclaration(IDirect3DVertexDeclaration9 *declaration)
       fputs(temp, m_pVertexDeclarationFile);
    }
    fputs("\n", m_pVertexDeclarationFile);
+#endif
+}
+
+void CDebug::StoreBlendStates(DWORD dest,DWORD src)
+{
+#if defined(DEBUG_ENABLED) && defined(DEBUG_BLEND_STATES)
+	char temp[128];
+	sprintf(temp, "Dest: %s Src: %s\n",gDestStates[dest],gDestStates[src]);
+	fputs(temp, m_pBlendStateFile);
+	fputs("\n", m_pBlendStateFile);
 #endif
 }
 
@@ -112,5 +129,21 @@ char *gDeclUsages[] = {
     "D3DDECLUSAGE_FOG         ",
     "D3DDECLUSAGE_DEPTH       ",
     "D3DDECLUSAGE_SAMPLE      "
+};
+#endif
+#if defined(DEBUG_ENABLED) && defined(DEBUG_BLEND_STATES)
+char *gDestStates[] = {
+   "rwBLENDNABLEND",
+   "rwBLENDZERO",
+    "rwBLENDONE",
+    "rwBLENDSRCCOLOR",
+    "rwBLENDINVSRCCOLOR",
+    "rwBLENDSRCALPHA",
+    "rwBLENDINVSRCALPHA",
+    "rwBLENDDESTALPHA",
+    "rwBLENDINVDESTALPHA",
+    "rwBLENDDESTCOLOR",
+    "rwBLENDINVDESTCOLOR",
+    "rwBLENDSRCALPHASAT"
 };
 #endif

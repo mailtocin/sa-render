@@ -94,7 +94,7 @@ VS_OUTPUT DeferredVS(VS_INPUT IN)
 {
     VS_OUTPUT OUT;
 	float4 Po = float4(IN.pos.xyz,1.0);
-	const float bsa = 8;
+	const float bsa = 7;
 	if (IN.weight[0] != 0.0)
 	{
 		OUT.vpos = float4(0.0, 0.0, 0.0, 0.0);
@@ -129,7 +129,7 @@ VS_SHADOW_OUTPUT shadowVS(VS_INPUT IN)
 {
     VS_SHADOW_OUTPUT OUT;
 	float4 Po = float4(IN.pos.xyz,1.0);
-	const float bsa = 8;
+	const float bsa = 7;
 	if (IN.weight[0] != 0.0)
 	{
 		OUT.vpos = float4(0.0, 0.0, 0.0, 0.0);
@@ -181,12 +181,8 @@ technique Deferred
     {
         VertexShader = compile vs_3_0 DeferredVS();
         PixelShader  = compile ps_3_0 DeferredPS();
-		SEPARATEALPHABLENDENABLE=FALSE;
-		AlphaBlendEnable=FALSE;
-		ALPHATESTENABLE=TRUE;
-		SrcBlend = one;
-		DestBlend = zero;
-		ZEnable=TRUE;
+		AlphaTestEnable = true;
+		AlphaBlendEnable = false;
     }
 };
 technique Shadow
@@ -195,11 +191,7 @@ technique Shadow
     {
         VertexShader = compile vs_3_0 shadowVS();
         PixelShader  = compile ps_3_0 shadowPS();
-		SEPARATEALPHABLENDENABLE=FALSE;
-		AlphaBlendEnable=FALSE;
-		ALPHATESTENABLE=TRUE;
-		SrcBlend = one;
-		DestBlend = zero;
-		ZEnable=TRUE;
+		AlphaTestEnable = true;
+		AlphaBlendEnable = false;
     }
 };

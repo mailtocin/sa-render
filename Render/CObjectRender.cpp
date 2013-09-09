@@ -15,6 +15,9 @@ int CObjectRender::g_DefaultRender_Flags = NULL;
 void CObjectRender::Patch()
 {
 	CPatch::SetPointer(0x5D67F4, NvcRenderCB);
+	//CPatch::SetPointer(0x7578AE, NvcRenderCB);
+	//CPatch::SetPointer(0x75E55E, NvcRenderCB);
+	//CPatch::SetPointer(0x7CB24C, NvcRenderCB);
 	CPatch::Nop(0x75703B, 1);
 	CPatch::RedirectCall(0x75703C, DefaultRender_DrawIndexedPrimitiveA);
 	CPatch::Nop(0x75705C, 1);
@@ -78,7 +81,6 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	UINT passes;
 	D3DXCOLOR color;
 	D3DXMATRIX vp,worldTransposedMatrix,worldViewProj,world;
-	//rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		CRender::SetTextureMaps((STexture*)g_DefaultRender_ResEntry->meshData.material->texture,m_pEffect);
 	}
@@ -101,7 +103,8 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveB(int ecx0,
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	return SetOldStates();
+	SetOldStates();
+	return true;
 }
 HRESULT __fastcall CObjectRender::DefaultRender_DrawPrimitiveB(int ecx0,
                                  int edx0,
@@ -110,7 +113,16 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawPrimitiveB(int ecx0,
          UINT StartVertex,
          UINT PrimitiveCount)
 {
- return device->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+	UINT passes;
+	GetCurrentStates();
+	m_pEffect->Begin(&passes,0);
+	m_pEffect->BeginPass(0);
+	m_pEffect->CommitChanges();
+	device->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+	m_pEffect->EndPass();
+	m_pEffect->End();
+	SetOldStates();
+	return true;
 }
 HRESULT __fastcall CObjectRender::DefaultRender_DrawPrimitiveA(int ecx0,
                                  int edx0,
@@ -119,7 +131,16 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawPrimitiveA(int ecx0,
          UINT StartVertex,
          UINT PrimitiveCount)
 {
-	return device->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+	UINT passes;
+	GetCurrentStates();
+	m_pEffect->Begin(&passes,0);
+	m_pEffect->BeginPass(0);
+	m_pEffect->CommitChanges();
+	device->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+	m_pEffect->EndPass();
+	m_pEffect->End();
+	SetOldStates();
+	return true;
 }
 
 HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
@@ -135,7 +156,6 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	UINT passes;
 	D3DXCOLOR color;
 	D3DXMATRIX vp,worldViewProj,world;
-	//rwD3D9RenderStateVertexAlphaEnable(g_DefaultRender_ResEntry->meshData.vertexAlpha || g_DefaultRender_ResEntry->meshData.material->color.alpha != 255);
 	if(g_DefaultRender_Flags & (rpGEOMETRYTEXTURED | rpGEOMETRYTEXTURED2)){
 		CRender::SetTextureMaps((STexture*)g_DefaultRender_ResEntry->meshData.material->texture,m_pEffect);
 	}
@@ -159,7 +179,8 @@ HRESULT __fastcall CObjectRender::DefaultRender_DrawIndexedPrimitiveA(int ecx0,
 	device->DrawIndexedPrimitive(Type, BaseVertexIndex, MinIndex, NumVertices, StartIndex, PrimitiveCount);
 	m_pEffect->EndPass();
 	m_pEffect->End();
-	return SetOldStates();
+	SetOldStates();
+	return true;
 }
 
 void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, unsigned __int8 type, char flags)
@@ -200,6 +221,10 @@ void __cdecl CObjectRender::NvcRenderCB(RwResEntry *repEntry, RpAtomic *object, 
 			CRender::SetTextureMaps((STexture*)mat->texture,m_pEffect);
 		}
 		GetCurrentStates();
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)1);
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)1);
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);
 		m_pEffect->Begin(&passes,0);
 		m_pEffect->BeginPass(0);
 		m_pEffect->CommitChanges();

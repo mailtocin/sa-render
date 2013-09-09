@@ -90,6 +90,7 @@
     <ClCompile Include="CNormalsGenerator.cpp" />
     <ClCompile Include="CObjectRender.cpp" />
     <ClCompile Include="CPedsRender.cpp" />
+    <ClCompile Include="CPostProcess.cpp" />
     <ClCompile Include="CRendAPI.cpp" />
     <ClCompile Include="CRender.cpp" />
     <ClCompile Include="CRenderWare.cpp" />
@@ -110,6 +111,7 @@
     <ClInclude Include="CObjectRender.h" />
     <ClInclude Include="CPatch.h" />
     <ClInclude Include="CPedsRender.h" />
+    <ClInclude Include="CPostProcess.h" />
     <ClInclude Include="CRendAPI.h" />
     <ClInclude Include="CRender.h" />
     <ClInclude Include="CLights.h" />

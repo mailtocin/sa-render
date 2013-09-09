@@ -44,7 +44,6 @@ void CParticleRender::InitParticleShader() {
 	ambientColor2.a = 1.0;
 	m_pEffect->SetVector("gvAmbientColor2", (D3DXVECTOR4 *)&ambientColor2);
 	m_pEffect->SetTechnique("Forward");
-	GetCurrentStates();
 	m_pEffect->Begin(&p,0);
 	m_pEffect->BeginPass(0);
 	m_pEffect->CommitChanges();

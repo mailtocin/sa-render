@@ -166,7 +166,8 @@
 #define rwD3D9Im2DRenderOpen() ((signed int (__cdecl*) ())0x7FB480)()
 #define rwD3D9Im3DRenderOpen() ((signed int (__cdecl*) ())0x80E020)()
 #define D3D9RestoreDeviceCallback ((int (*)(void))0xC980B0)
-
+#define RenderStatesReset() ((int (__cdecl*)())0x700E00)()
+#define RenderStatesSave() ((int (__cdecl*)())0x700CC0)()
 // D3D Helpers
 #define SAFE_RELEASE(p) {if(p){(p)->Release();(p)=NULL;}}
 
@@ -179,6 +180,7 @@ D3DXMATRIX *getWorldViewProj(D3DXMATRIX *out, RwMatrix *world, D3DXMATRIX *viewP
 RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX m_View,D3DXMATRIX m_Projection,float screenW,float screenH);
 HRESULT GetCurrentStates();
 HRESULT SetOldStates();
+void DrawPostProcessPass(ID3DXEffect *);
 class CGlobalValues
 {
 public:

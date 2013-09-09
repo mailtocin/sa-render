@@ -51,6 +51,10 @@ void CWaterRender::InitWaterShader() {
 	m_pEffect->SetFloat("time",f_Time);
 	m_pEffect->SetTechnique("Forward");
 	GetCurrentStates();
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);
 	m_pEffect->Begin(&p,0);
 	m_pEffect->BeginPass(0);
 }

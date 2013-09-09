@@ -145,12 +145,8 @@ technique Deferred
     {
         VertexShader = compile vs_3_0 DeferredVS();
         PixelShader  = compile ps_3_0 DeferredPS();
-		SEPARATEALPHABLENDENABLE=FALSE;
-		AlphaBlendEnable=FALSE;
-		ALPHATESTENABLE=TRUE;
-		SrcBlend = one;
-		DestBlend = zero;
-		ZEnable=TRUE;
+		AlphaTestEnable = true;
+		AlphaBlendEnable = false;
     }
 };
 technique Shadow
@@ -159,11 +155,7 @@ technique Shadow
     {
         VertexShader = compile vs_2_0 shadowVS();
         PixelShader  = compile ps_2_0 shadowPS();
-		SEPARATEALPHABLENDENABLE=FALSE;
-		AlphaBlendEnable=FALSE;
-		ALPHATESTENABLE=TRUE;
-		SrcBlend = one;
-		DestBlend = zero;
-		ZEnable=TRUE;
+		AlphaTestEnable = true;
+		AlphaBlendEnable = false;
     }
 };
