@@ -9,6 +9,7 @@
 #include "CWaterRender.h"
 #include "CLights.h"
 #include "CSkyRender.h"
+#include "CPostProcess.h"
 #include <stdio.h>
 #include <sstream>
 
@@ -123,54 +124,6 @@ void CDeferredRendering::Reset()
 		m_pEffect->OnResetDevice();
 }
 
-//--------------------Full-Screen Quad Drawing Function-------------------
-void DrawFullScreenQuad() {
-	IDirect3DVertexDeclaration9*  VertDecl = NULL,*oldVertDecl = NULL;
-	struct Vertex {
-		D3DXVECTOR2 pos;
-		D3DXVECTOR2 tex_coord;
-	}quad[4];
-	// 1) We need to create quad verticles and texture coordinates.
-	quad[0].pos = D3DXVECTOR2(-1,-1); quad[0].tex_coord = D3DXVECTOR2(0,1);
-	quad[1].pos = D3DXVECTOR2(-1,1);  quad[1].tex_coord = D3DXVECTOR2(0,0);
-	quad[2].pos = D3DXVECTOR2(1,-1);  quad[2].tex_coord = D3DXVECTOR2(1,1);
-	quad[3].pos = D3DXVECTOR2(1,1);   quad[3].tex_coord = D3DXVECTOR2(1,0);
-
-	// 2) We need to create quad vertex declaration.
-	const D3DVERTEXELEMENT9 Decl[] = {
-		{ 0, 0,  D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
-		{ 0, 8, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 },
-		D3DDECL_END()
-	};
-	g_Device->CreateVertexDeclaration( Decl, &VertDecl );
-	// 3) Finnaly we need to set it all and draw it.
-	g_Device->GetVertexDeclaration(&oldVertDecl);
-	g_Device->SetVertexDeclaration(VertDecl);
-	rwD3D9SetRenderState(D3DRS_CULLMODE,rwCULLMODECULLNONE);
-	
-	g_Device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex));
-	// 4) And don't forget to release it, otherwise you can crash.
-	SAFE_RELEASE(VertDecl);
-	g_Device->SetVertexDeclaration(oldVertDecl);
-}
-//------------------------------------------------------------------------
-
-// Post-Process Drawing Pass.... TODO: idk what to do with it... maybe make passes count in value?
-void CDeferredRendering::DrawPostProcessPass() {
-	UINT pPasses;				  // Pass count - unused but we can set it to use
-	DWORD dwOldFVF;
-	const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
-	g_Device->GetFVF(&dwOldFVF);
-	g_Device->SetFVF(dwFVF_POST);
-	GetCurrentStates();
-	m_pEffect->Begin(&pPasses,0); // This function begin effect using and outputs pass count.
-	m_pEffect->BeginPass(0);	  // This function begins pass(here we use only first pass for now).
-	DrawFullScreenQuad();		  // Call Full-Screen Quad Drawing Function to draw Full-Screen Quad!
-	m_pEffect->EndPass();		  // This function ends current pass. Don't forget it!
-	m_pEffect->End();			  // This function ends effect using. Don't forget it!
-	SetOldStates();
-	g_Device->SetFVF(dwOldFVF);
-}
 
 //--------------------------On Lost Device--------------------------------
 void CDeferredRendering::Lost()
@@ -217,7 +170,9 @@ void CDeferredRendering::PostProcess(IDirect3DSurface9 *outSurf){
 		tempString = "screenBuffer_";
 		tempString += std::to_string((long double)i - 1);
 		m_pEffect->SetTexture((char*)tempString.c_str(),rtTmpSurface[i-1]);
-		DrawPostProcessPass();
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);
+		DrawPostProcessPass(m_pEffect);
 	}
 	g_Device->SetRenderTarget(0,outSurf);
 	tempString = "PostProcess_";
@@ -227,7 +182,9 @@ void CDeferredRendering::PostProcess(IDirect3DSurface9 *outSurf){
 	tempString = "screenBuffer_";
 	tempString += std::to_string((long double)ppTCcount - 1);
 	m_pEffect->SetTexture((char*)tempString.c_str(),rtTmpSurface[ppTCcount-1]);
-	DrawPostProcessPass();
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);
+	DrawPostProcessPass(m_pEffect);
 }
 //------------------------------------------------------------------------
 
@@ -427,7 +384,7 @@ void CDeferredRendering::Idle(void *a)
 		ConstructRendererRenderList(); // CRenderer::ConstructRenderList
 		PreRenderRenderer();           // CRenderer::PreRender
 		ProcessPedTasks();
-		CreateShadowManagerShadows(ShadowManager); // CShadowManager::CreateShadows
+		//CreateShadowManagerShadows(ShadowManager); // CShadowManager::CreateShadows
 		if(LightningFlash) // CWeather::LightningFlash
 		{
 			Timecycle->m_nCurrentSkyBottomRed = 255;
@@ -443,7 +400,7 @@ void CDeferredRendering::Idle(void *a)
 		RwCameraSetFarClipPlane(Scene->m_pRwCamera, Timecycle->m_fCurrentFarClip);
 		Scene->m_pRwCamera->fogPlane = Timecycle->m_fCurrentFogStart;
 		//RenderMirrors();
-		//RwCameraEndUpdate(Scene->m_pRwCamera);
+		RwCameraEndUpdate(Scene->m_pRwCamera);
 //---------------------------Initialization------------------------------
 		CVehicleRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CVehicleRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
@@ -454,7 +411,7 @@ void CDeferredRendering::Idle(void *a)
 		CPedsRender::m_pEffect->SetFloat("screenHeight",(float)RsGlobal->MaximumHeight);
 		CPedsRender::m_pEffect->SetFloat("screenWidth",(float)RsGlobal->MaximumWidth);
 		CPedsRender::m_pEffect->SetTexture("gtNoise",noise);
-		RwCameraEndUpdate(Scene->m_pRwCamera);
+		CPostProcess::CreateRTs();
 		for(int i =0;i<8;i+=2){
 			if(!shadow[i]){
 				g_Device->CreateTexture(ShadowMapSize,ShadowMapSize,0,D3DUSAGE_RENDERTARGET,D3DFMT_R5G6B5,D3DPOOL_DEFAULT,&shadow[i],NULL);
@@ -469,12 +426,12 @@ void CDeferredRendering::Idle(void *a)
 		}
 		for(int i =0;i<3;i++) {
 			if(!gbuffer[i]) {
-				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,i==2? D3DFMT_A32B32G32R32F:D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT,&gbuffer[i],NULL);
+				g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,i==2? D3DFMT_A32B32G32R32F:D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT,&gbuffer[i],NULL);
 				gbuffer[i]->GetSurfaceLevel(0,&gbSurface[i]);
 			}
 		}
 		if(!lightingTexture) {
-			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A16B16G16R16F,D3DPOOL_DEFAULT,&lightingTexture,NULL);
+			g_Device->CreateTexture(RsGlobal->MaximumWidth,RsGlobal->MaximumHeight,0,D3DUSAGE_RENDERTARGET,D3DFMT_A8R8G8B8,D3DPOOL_DEFAULT,&lightingTexture,NULL);
 			lightingTexture->GetSurfaceLevel(0,&lightingSurface);
 		}
 		/*if(!reflectionTexture) {
@@ -520,8 +477,6 @@ void CDeferredRendering::Idle(void *a)
 		CSkyRender::PreRender(&cam,&viewproj);
 		D3DXCOLOR cc;
 		cc.r = 0;cc.g = 0;cc.b = 0;cc.a = 1;
-
-		//RwCameraBeginUpdate(Scene->m_pRwCamera);
 //----------------------------------------------------------------------
 //-------------------Render into geometry buffer-------------------------
 		g_Device->GetRenderTarget(0, &pOldRTSurf);
@@ -529,8 +484,7 @@ void CDeferredRendering::Idle(void *a)
 		g_Device->SetRenderTarget(0,gbSurface[0]);
 		g_Device->SetRenderTarget(1,gbSurface[1]);
 		g_Device->SetRenderTarget(2,gbSurface[2]);
-		g_Device->Clear(0,NULL,D3DCLEAR_STENCIL||D3DCLEAR_TARGET||D3DCLEAR_ZBUFFER,cc,1,0);
-		//RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
+		RwCameraClear(Scene->m_pRwCamera, gColourTop, 3);
 		CObjectRender::m_pEffect->SetTechnique("Deferred");
 		CVehicleRender::m_pEffect->SetTechnique("Deferred");
 		CPedsRender::m_pEffect->SetTechnique("Deferred");
@@ -550,6 +504,7 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetMatrix("gmViewProjInv",&invviewproj);
 		m_pEffect->SetMatrix("gmViewInv",&invview);
 		sun = D3DXVECTOR4(camPos.x+(CGlobalValues::gm_SunPosition.x),camPos.y+(CGlobalValues::gm_SunPosition.y),camPos.z+(CGlobalValues::gm_SunPosition.z),1);
+		
 		RenderScene();
 		RenderPedWeapons();
 		CSkyRender::Render(&sun);
@@ -557,9 +512,6 @@ void CDeferredRendering::Idle(void *a)
 		RwCameraEndUpdate(Scene->m_pRwCamera);
 		CSkyRender::Release();
 		RwCameraBeginUpdate(Scene->m_pRwCamera);
-		
-		//
-		
 //-------------------Render Deferred Lighting----------------------------
 		
 		m_pEffect->SetTechnique("DefShad");
@@ -576,7 +528,9 @@ void CDeferredRendering::Idle(void *a)
 		m_pEffect->SetTexture("colorBuffer",gbuffer[0]);
 		m_pEffect->SetTexture("normalSpecBuffer",gbuffer[1]);
 		m_pEffect->SetTexture("shadowDepthBuffer",gbuffer[2]);
+		CPostProcess::m_pEffect->SetTexture("tWPosDepth",gbuffer[2]);
 		m_pEffect->SetTexture("noise",noise);
+		CPostProcess::m_pEffect->SetTexture("tNoise",noise);
 		m_pEffect->SetTexture("cubemap",cubemap);
 		m_pEffect->SetTexture("test",shadow[1]);
 		m_pEffect->SetTexture("test2",shadow[3]);
@@ -592,7 +546,9 @@ void CDeferredRendering::Idle(void *a)
 		cam = *(D3DXVECTOR4*)GetCamPos();
 		m_pEffect->SetVector("vDir",&D3DXVECTOR4(cam.x-camPos.x,cam.y-camPos.y,cam.z-camPos.z,1));
 		m_pEffect->SetVector("lightDirection",&D3DXVECTOR4(CGlobalValues::gm_SunPosition.x+camPos.x,CGlobalValues::gm_SunPosition.y+camPos.y,CGlobalValues::gm_SunPosition.z+camPos.z,1));
-		DrawPostProcessPass();
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);
+		DrawPostProcessPass(m_pEffect);
 		m_pEffect->SetTechnique("DefShadPL");
 		if(CLights::m_nNumLights > 0)
 		{
@@ -603,12 +559,14 @@ void CDeferredRendering::Idle(void *a)
 				if(CLights::m_aLights[l].mode == LIGHT_MODE_POINT)
 				{
 					pos = D3DXVECTOR3(CLights::m_aLights[l].pos.x, CLights::m_aLights[l].pos.y, CLights::m_aLights[l].pos.z);
-					sr = DetermineClipRect(pos, CLights::m_aLights[l].radius, view, proj, 1024, 768);
+					sr = DetermineClipRect(pos, CLights::m_aLights[l].radius, view, proj, (float)RsGlobal->MaximumWidth, (float)RsGlobal->MaximumHeight);
 					m_pEffect->SetVector("sLP",&D3DXVECTOR4(CLights::m_aLights[l].pos.x,CLights::m_aLights[l].pos.y,CLights::m_aLights[l].pos.z,1));
 					m_pEffect->SetVector("PointLightColor",&D3DXVECTOR4(CLights::m_aLights[l].red,CLights::m_aLights[l].green,CLights::m_aLights[l].blue,1));
 					m_pEffect->SetFloat("PointLightRange",CLights::m_aLights[l].radius);
 					g_Device->SetScissorRect(&sr);
-					DrawPostProcessPass();
+					RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+					RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDONE);
+					DrawPostProcessPass(m_pEffect);
 				}
 			}
 		}
@@ -617,24 +575,26 @@ void CDeferredRendering::Idle(void *a)
 		g_Device->SetRenderTarget(0,ppTCcount>0? rsTmpSurface[0]:pOldRTSurf);
 		m_pEffect->SetTexture("lightBuffer",lightingTexture);
 		m_pEffect->SetTechnique("DefShadL");
-		DrawPostProcessPass();
-		if(ppTCcount>0){
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+		RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);
+		DrawPostProcessPass(m_pEffect);
+		if(ppTCcount>0) {
 			PostProcess(pOldRTSurf);
 		}
-		
-		//SetOldStates(oDB,oSB,oBO,oAB,oAT);
 		CParticleRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
 		CWaterRender::m_pEffect->SetTexture("gtDepth",gbuffer[2]);
 		CWaterRender::m_pEffect->SetTexture("tScreen",gbuffer[0]);
 		CWaterRender::m_pEffect->SetTexture("tRefl",reflectionTexture);
 		CWaterRender::m_pEffect->SetMatrix("gmRefl",&g_mReflViewProj);
-		//CImmediateRender::m_nCurrentRendering = IM_RENDER_WATER;
-		//RenderWater();
-		//CImmediateRender::m_nCurrentRendering = IM_RENDER_PARTICLES;
+		CImmediateRender::m_nCurrentRendering = IM_RENDER_WATER;
+		RenderWater();
+		CImmediateRender::m_nCurrentRendering = IM_RENDER_PARTICLES;
 		RenderEffects();
 		if((!TheCamera->m_BlurType || TheCamera->m_BlurType == 2) && TheCamera->m_ScreenReductionPercentage > 0.0 )
 			SetCameraMotionBlurAlpha(TheCamera, 150); // CCamera::SetMotionBlurAlpha
 		RenderCameraMotionBlur(TheCamera);            // CCamera::RenderMotionBlur
+		CPostProcess::Render();
+		rwD3D9RenderStateReset();
 		Render2dStuff();
 //----------------------------------------------------------------------
 	}
@@ -750,13 +710,13 @@ void CDeferredRendering::RenderEffects()
 	sub_6E7760();
 	RenderCloudMasked();
 	RenderHighClouds();
-	/*if(gNumCreatedHeliLights || gNumCreatedSearchlights)
+	if(gNumCreatedHeliLights || gNumCreatedSearchlights)
 	{
 		SetRenderStatesForSpotLights();
 		RenderHeliLights();   // CHeliLights::RenderAll
 		RenderSearchlights(); // CSearchlights::RenderAll
 		ResetRenderStatesForSpotLights();
-	}*/
+	}
 	RenderWeaponEffects(); // CWeaponEffects::Render
 	if(gReplayMode != 1 && !GetPad(0)->field_10E) // CReplay::Mode  CPad::GetPad
 		RenderWeaponTargetTriangle(FindPlayerPed(-1));

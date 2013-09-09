@@ -7,13 +7,15 @@
 /*******************************************************************************************/
 #include <Windows.h>
 #include "CRender.h"
+#include "CDebug.h"
 #include "Initialise.h"
 
 void RenderAttach();
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved)
 {
-    if(reason == DLL_PROCESS_ATTACH)
+    if(reason == DLL_PROCESS_ATTACH){
 		InitialiseRender(CRender::Patch);
+	}
     return TRUE;
 }

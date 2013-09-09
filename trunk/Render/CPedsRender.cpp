@@ -79,6 +79,10 @@ HRESULT __cdecl CPedsRender::rxD3D9VertexShaderDefaultMeshRenderCallBack(RxD3D9R
 		CRender::SetTextureMaps((STexture*)instData->material->texture,m_pEffect);
 	}
 	GetCurrentStates();
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
 	m_pEffect->CommitChanges();

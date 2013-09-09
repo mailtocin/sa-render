@@ -16,7 +16,6 @@ public:
 	static void RenderEffects();
 	static void RenderParticlesType0();
 	// /TODO
-	static void DrawPostProcessPass();
 	static void PostProcess(IDirect3DSurface9 *outSurf);
 	static void CreateShadowCamera();
 	static void ComputeShadowMap(IDirect3DSurface9*shadowSurface,IDirect3DSurface9*shadowSurfaceC,float distance,D3DXMATRIX*lightview,D3DXMATRIX*lightproj,int cascadeNum);

@@ -69,7 +69,7 @@ Deferred_OUT skyPS(VS_SKY_OUTPUT IN) {
 	half sunInfluence = dot( normalize(lightDirection.xyz),normalize( IN.normal.xyz ) )*0.25+0.75;
 	sunInfluence *= saturate( normalize(lightDirection.z) * 4.0 ) * 0.666 + 0.333;
 	sunInfluence = pow(saturate(sunInfluence),720.0f);
-	float3 skyColor = lerp(skyColorBottom,skyColorTop,saturate(dot(IN.normal2.xyz,float3(0,0,4))));
+	float3 skyColor = lerp(skyColorBottom,skyColorTop,smoothstep(-200.0, 200.0, IN.normal.z));
 	float4 clouds = ComputeClouds(IN.tex.xy*5);
 	OUT.col0 = float4(skyColor,1)*(1-clouds*fCloud1Transp)+(clouds*TopCloudColor*fCloud1Transp);
 	//OUT.col0.xyz *= 0.9;
@@ -83,14 +83,7 @@ technique Sky {
 	pass p0 {
 		VertexShader = compile vs_3_0 skyVS();
 		PixelShader  = compile ps_3_0 skyPS();
-		cullmode = none;
-		SrcBlend = ZERO;
-		DestBlend = ONE;
-		ALPHATESTENABLE=FALSE;
-		SEPARATEALPHABLENDENABLE=FALSE;
-		AlphaBlendEnable=FALSE;
-		FogEnable=FALSE;
-		SRGBWRITEENABLE=FALSE;
-		ZEnable=TRUE;
+		AlphaTestEnable = true;
+		AlphaBlendEnable = false;
 	}
 };

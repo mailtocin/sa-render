@@ -200,28 +200,76 @@ RECT DetermineClipRect(const D3DXVECTOR3& position, const float range,D3DXMATRIX
 }
 
 HRESULT GetCurrentStates(){
-	rwD3D9GetRenderState(D3DRS_DESTBLEND,&CGlobalValues::gm_BlendStates[0]);
-	rwD3D9GetRenderState(D3DRS_ALPHATESTENABLE,&CGlobalValues::gm_BlendStates[1]);
-	rwD3D9GetRenderState(D3DRS_ALPHABLENDENABLE,&CGlobalValues::gm_BlendStates[2]);
-	rwD3D9GetRenderState(D3DRS_ZENABLE,&CGlobalValues::gm_BlendStates[5]);
-	rwD3D9GetRenderState(D3DRS_ZWRITEENABLE,&CGlobalValues::gm_BlendStates[6]);
-	rwD3D9GetRenderState(D3DRS_CULLMODE,&CGlobalValues::gm_BlendStates[7]);
-	rwD3D9GetRenderState(D3DRS_SEPARATEALPHABLENDENABLE,&CGlobalValues::gm_BlendStates[8]);
-	rwD3D9GetRenderState(D3DRS_SCISSORTESTENABLE,&CGlobalValues::gm_BlendStates[9]);
-	rwD3D9GetRenderState(D3DRS_SRGBWRITEENABLE,&CGlobalValues::gm_BlendStates[10]);
-	rwD3D9GetRenderState(D3DRS_FOGENABLE,&CGlobalValues::gm_BlendStates[11]);
-	return rwD3D9GetRenderState(D3DRS_SRCBLEND,&CGlobalValues::gm_BlendStates[4]);
+	RwEngineInstance->dOpenDevice.fpRenderStateGet(rwRENDERSTATEDESTBLEND,(void*)&CGlobalValues::gm_BlendStates[0]);
+	RwEngineInstance->dOpenDevice.fpRenderStateGet(rwRENDERSTATESRCBLEND,(void*)&CGlobalValues::gm_BlendStates[4]);
+	return true;
 }
 HRESULT SetOldStates(){
-	rwD3D9SetRenderState(D3DRS_DESTBLEND,CGlobalValues::gm_BlendStates[0]);
-	rwD3D9SetRenderState(D3DRS_ALPHATESTENABLE,CGlobalValues::gm_BlendStates[1]);
-	rwD3D9SetRenderState(D3DRS_ALPHABLENDENABLE,CGlobalValues::gm_BlendStates[2]);
-	rwD3D9SetRenderState(D3DRS_ZENABLE,CGlobalValues::gm_BlendStates[5]);
-	rwD3D9SetRenderState(D3DRS_ZWRITEENABLE,CGlobalValues::gm_BlendStates[6]);
-	rwD3D9SetRenderState(D3DRS_CULLMODE,CGlobalValues::gm_BlendStates[7]);
-	rwD3D9SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE,CGlobalValues::gm_BlendStates[8]);
-	rwD3D9SetRenderState(D3DRS_SCISSORTESTENABLE,CGlobalValues::gm_BlendStates[9]);
-	rwD3D9SetRenderState(D3DRS_SRGBWRITEENABLE,CGlobalValues::gm_BlendStates[10]);
-	rwD3D9SetRenderState(D3DRS_FOGENABLE,CGlobalValues::gm_BlendStates[11]);
-	return rwD3D9SetRenderState(D3DRS_SRCBLEND,CGlobalValues::gm_BlendStates[4]);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATETEXTUREADDRESS, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATETEXTUREPERSPECTIVE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESHADEMODE, (void*)2);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATETEXTUREFILTER, (void*)2);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, (void*)0);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)CGlobalValues::gm_BlendStates[4]);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)CGlobalValues::gm_BlendStates[0]);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEBORDERCOLOR, (void*)0xFF000000);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEFOGENABLE, 0);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(
+	rwRENDERSTATEFOGCOLOR,
+	(void*)(Timecycle->m_nCurrentSkyBottomBlue | ((Timecycle->m_nCurrentSkyBottomGreen | ((Timecycle->m_nCurrentSkyBottomRed | 0xFFFFFF00) << 8)) << 8)));
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEFOGTYPE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEALPHATESTFUNCTION, (void*)5);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEALPHATESTFUNCTIONREF, (void*)2);
+	return true;
+}
+
+//--------------------Full-Screen Quad Drawing Function-------------------
+void DrawFullScreenQuad() {
+	IDirect3DVertexDeclaration9*  VertDecl = NULL,*oldVertDecl = NULL;
+	struct Vertex {
+		D3DXVECTOR2 pos;
+		D3DXVECTOR2 tex_coord;
+	}quad[4];
+	// 1) We need to create quad verticles and texture coordinates.
+	quad[0].pos = D3DXVECTOR2(-1,-1); quad[0].tex_coord = D3DXVECTOR2(0,1);
+	quad[1].pos = D3DXVECTOR2(-1,1);  quad[1].tex_coord = D3DXVECTOR2(0,0);
+	quad[2].pos = D3DXVECTOR2(1,-1);  quad[2].tex_coord = D3DXVECTOR2(1,1);
+	quad[3].pos = D3DXVECTOR2(1,1);   quad[3].tex_coord = D3DXVECTOR2(1,0);
+
+	// 2) We need to create quad vertex declaration.
+	const D3DVERTEXELEMENT9 Decl[] = {
+		{ 0, 0,  D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
+		{ 0, 8, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 },
+		D3DDECL_END()
+	};
+	g_Device->CreateVertexDeclaration( Decl, &VertDecl );
+	// 3) Finnaly we need to set it all and draw it.
+	g_Device->GetVertexDeclaration(&oldVertDecl);
+	g_Device->SetVertexDeclaration(VertDecl);
+	g_Device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex));
+	// 4) And don't forget to release it, otherwise you can crash.
+	SAFE_RELEASE(VertDecl);
+	g_Device->SetVertexDeclaration(oldVertDecl);
+}
+//------------------------------------------------------------------------
+
+// Post-Process Drawing Pass.... TODO: idk what to do with it... maybe make passes count in value?
+void DrawPostProcessPass(ID3DXEffect *m_pEffect) {
+	UINT pPasses;				  // Pass count - unused but we can set it to use
+	DWORD dwOldFVF;
+	const DWORD dwFVF_POST = D3DFVF_XYZRHW | D3DFVF_TEX1;
+	g_Device->GetFVF(&dwOldFVF);
+	g_Device->SetFVF(dwFVF_POST);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)0);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)0);
+	m_pEffect->Begin(&pPasses,0); // This function begin effect using and outputs pass count.
+	m_pEffect->BeginPass(0);	  // This function begins pass(here we use only first pass for now).
+	DrawFullScreenQuad();		  // Call Full-Screen Quad Drawing Function to draw Full-Screen Quad!
+	m_pEffect->EndPass();		  // This function ends current pass. Don't forget it!
+	m_pEffect->End();			  // This function ends effect using. Don't forget it!
+	SetOldStates();
+	g_Device->SetFVF(dwOldFVF);
 }

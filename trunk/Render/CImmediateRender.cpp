@@ -25,6 +25,7 @@ HRESULT __fastcall CImmediateRender::DrawPrimitive_1(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
+	//GetCurrentStates();
 	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
 		CParticleRender::InitParticleShader();
 	}
@@ -38,6 +39,7 @@ HRESULT __fastcall CImmediateRender::DrawPrimitive_1(int _ecx, int _edx, IDirect
 	} else if(m_nCurrentRendering == IM_RENDER_WATER){
 		CWaterRender::DeInitWaterShader();
 	}
+	//SetOldStates();
 	// --
 	return result;
 }
@@ -47,6 +49,7 @@ HRESULT __fastcall CImmediateRender::DrawPrimitive_2(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
+	//GetCurrentStates();
 	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
 		CParticleRender::InitParticleShader();
 	}
@@ -60,7 +63,7 @@ HRESULT __fastcall CImmediateRender::DrawPrimitive_2(int _ecx, int _edx, IDirect
 	} else if(m_nCurrentRendering == IM_RENDER_WATER){
 		CWaterRender::DeInitWaterShader();
 	}
-
+	//SetOldStates();
 	// --
 	return result;
 }
@@ -70,6 +73,7 @@ HRESULT __fastcall CImmediateRender::DrawPrimitiveUp(int _ecx, int _edx, IDirect
 {
 	HRESULT result;
 	// --
+	//GetCurrentStates();
 	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
 		CParticleRender::InitParticleShader();
 	}
@@ -83,6 +87,7 @@ HRESULT __fastcall CImmediateRender::DrawPrimitiveUp(int _ecx, int _edx, IDirect
 	} else if(m_nCurrentRendering == IM_RENDER_WATER){
 		CWaterRender::DeInitWaterShader();
 	}
+	//SetOldStates();
 	// --
 	return result;
 }
@@ -92,6 +97,7 @@ HRESULT __fastcall CImmediateRender::DrawIndexedPrimitive(int _ecx, int _edx, ID
 {
 	HRESULT result;
 	// --
+	//GetCurrentStates();
 	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
 		CParticleRender::InitParticleShader();
 	}
@@ -105,6 +111,7 @@ HRESULT __fastcall CImmediateRender::DrawIndexedPrimitive(int _ecx, int _edx, ID
 	} else if(m_nCurrentRendering == IM_RENDER_WATER){
 		CWaterRender::DeInitWaterShader();
 	}
+	//SetOldStates();
 	// --
 	return result;
 }
@@ -115,6 +122,7 @@ HRESULT __fastcall CImmediateRender::DrawIndexedPrimitiveUp(int _ecx, int _edx, 
 {
 	HRESULT result;
 	// --
+	//GetCurrentStates();
 	if(m_nCurrentRendering == IM_RENDER_PARTICLES){
 		CParticleRender::InitParticleShader();
 	}
@@ -129,6 +137,7 @@ HRESULT __fastcall CImmediateRender::DrawIndexedPrimitiveUp(int _ecx, int _edx, 
 	} else if(m_nCurrentRendering == IM_RENDER_WATER){
 		CWaterRender::DeInitWaterShader();
 	}
+	//SetOldStates();
 	// --
 	return result;
 }

@@ -13,7 +13,7 @@
 #include "CSkyRender.h"
 #include "CParticleRender.h"
 #include "CWaterRender.h"
-//#include "CPostProcess.h"
+#include "CPostProcess.h"
 #include "CGame.h"
 #pragma comment(lib, "D3DDeviceReset.lib")
 
@@ -45,7 +45,7 @@ void CRender::Setup()
 	CPedsRender::Setup();
 	CSkyRender::Setup();
 	CParticleRender::Setup();
-	//CPostProcess::Setup();
+	CPostProcess::Setup();
 	CWaterRender::Setup();
 }
 
@@ -63,7 +63,7 @@ void CRender::BeforeReset()
 	CPedsRender::Lost();
 	CParticleRender::Lost();
 	CWaterRender::Lost();
-	//CPostProcess::Lost();
+	CPostProcess::Lost();
 	if(CSkyRender::m_pEffect)
 		CSkyRender::m_pEffect->OnLostDevice();
 }
@@ -76,7 +76,7 @@ void CRender::AfterReset()
 	CPedsRender::Reset();
 	CParticleRender::Reset();
 	CWaterRender::Reset();
-	//CPostProcess::Reset();
+	CPostProcess::Reset();
 	if(CSkyRender::m_pEffect)
 		CSkyRender::m_pEffect->OnResetDevice();
 }

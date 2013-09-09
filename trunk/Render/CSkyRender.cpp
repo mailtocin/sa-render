@@ -90,9 +90,12 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 	m_pEffect->SetMatrix("gmWorldViewProj",&gm_WorldViewProjection);
 	m_pEffect->SetMatrix("gmWorld",&gm_World);
 	GetCurrentStates();
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)1);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);
 	m_pEffect->Begin(&passes,0);
 	m_pEffect->BeginPass(0);
-	m_pEffect->CommitChanges();
 	if(skySphere){
 		skySphere->DrawSubset(0);
 	}
