@@ -11,6 +11,8 @@ public:
 	static bool CreateSkySphere(float fRad,UINT slices,UINT stacks);
 	static ID3DXEffect *m_pEffect;
 	static IDirect3DTexture9 *CloudTex;
+	static IDirect3DTexture9 *StarsTex;
+	static IDirect3DTexture9 *StarsMaskTex;
 	static D3DXMATRIX gm_WorldViewProjection;
 	static D3DXMATRIX gm_World;
 	static LPD3DXMESH skySphere;

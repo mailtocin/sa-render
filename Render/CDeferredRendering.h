@@ -22,8 +22,9 @@ public:
 	static void DestroyShadowCamera();
 	static void DrawCubemap();
 	static void DrawWaterReflection();
-	static IDirect3DTexture9 *shadow[8];
-	static IDirect3DSurface9 *shadowSurface[8];
+	static const int CascadeCount = 2;
+	static IDirect3DTexture9 *shadow[CascadeCount*2];
+	static IDirect3DSurface9 *shadowSurface[CascadeCount*2];
 	static IDirect3DTexture9 *gbuffer[3];
 	static IDirect3DSurface9 *gbSurface[3];
 	static IDirect3DTexture9 **rtTmpSurface;

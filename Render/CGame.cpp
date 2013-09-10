@@ -222,7 +222,7 @@ HRESULT SetOldStates(){
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEFOGTYPE, (void*)1);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATECULLMODE, (void*)1);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEALPHATESTFUNCTION, (void*)5);
-	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEALPHATESTFUNCTIONREF, (void*)2);
+	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEALPHATESTFUNCTIONREF, (void*)0x40);
 	return true;
 }
 

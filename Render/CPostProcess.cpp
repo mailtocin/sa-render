@@ -35,6 +35,7 @@ void CPostProcess::CreateRTs() {
 void CPostProcess::DoBlur() {
 	g_Device->SetRenderTarget(0,bluredSurf);
 	m_pEffect->SetVector("fInverseViewportDimensions", &D3DXVECTOR4(1.0f/(float)RsGlobal->MaximumWidth,1.0f/(float)RsGlobal->MaximumHeight,1,1));
+	m_pEffect->SetVector("vFocusParams", &D3DXVECTOR4(Scene->m_pRwCamera->nearPlane+1.5f,Scene->m_pRwCamera->farPlane-200.0f,20.0f,20.0f));
 	m_pEffect->SetTexture("tScreen",screenTex);
 	m_pEffect->SetTechnique("Blur");
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
@@ -45,14 +46,6 @@ void CPostProcess::DoBlur() {
 void CPostProcess::Render() {
 	IDirect3DSurface9 *outSurf;
 	g_Device->GetRenderTarget(0,&outSurf);
-	outSurf->Release();
-	g_Device->StretchRect(outSurf,NULL,screenSurf,NULL,D3DTEXF_NONE);
-	DoBlur();
-	g_Device->SetRenderTarget(0,outSurf);
-	m_pEffect->SetVector("fInverseViewportDimensions", &D3DXVECTOR4(1.0f/(float)RsGlobal->MaximumWidth,1.0f/(float)RsGlobal->MaximumHeight,1,1));
-	m_pEffect->SetTexture("tScreen",screenTex);
-	m_pEffect->SetTexture("tBlur",bluredTex);
-	m_pEffect->SetTexture("tLens",lensTex);
 	WORD mode4 = TheCamera->Cams[TheCamera->ActiveCam].Mode;
 	if(mode4 == 53 || mode4 == 55 || mode4 == 65) {
 		m_pEffect->SetVector("vFocusPos",&D3DXVECTOR4( *(float *)0xB6EC14,*(float *)0xB6EC10,1.0f,1.0f));
@@ -61,6 +54,14 @@ void CPostProcess::Render() {
 		m_pEffect->SetVector("vFocusPos",&D3DXVECTOR4( 0.5f,0.5f,1.0f,1.0f));
 		m_pEffect->SetBool("bAutofocus",false);
 	}
+	outSurf->Release();
+	g_Device->StretchRect(outSurf,NULL,screenSurf,NULL,D3DTEXF_NONE);
+	DoBlur();
+	g_Device->SetRenderTarget(0,outSurf);
+	m_pEffect->SetVector("fInverseViewportDimensions", &D3DXVECTOR4(1.0f/(float)RsGlobal->MaximumWidth,1.0f/(float)RsGlobal->MaximumHeight,1,1));
+	m_pEffect->SetTexture("tScreen",screenTex);
+	m_pEffect->SetTexture("tBlur",bluredTex);
+	m_pEffect->SetTexture("tLens",lensTex);
 	m_pEffect->SetTechnique("DepthOfField");
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATESRCBLEND, (void*)rwBLENDONE);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEDESTBLEND, (void*)rwBLENDZERO);

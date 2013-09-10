@@ -4,6 +4,8 @@
 
 ID3DXEffect *CSkyRender::m_pEffect;
 IDirect3DTexture9 *CSkyRender::CloudTex;
+IDirect3DTexture9 *CSkyRender::StarsTex;
+IDirect3DTexture9 *CSkyRender::StarsMaskTex;
 D3DXMATRIX CSkyRender::gm_WorldViewProjection;
 D3DXMATRIX CSkyRender::gm_World;
 LPD3DXMESH CSkyRender::skySphere;
@@ -17,6 +19,11 @@ bool CSkyRender::Setup()
 		return false;
 	}
 	D3DXCreateTextureFromFile(g_Device,"resources/Textures/clouds.tga",&CloudTex);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/texture-stars_mask.tga",&StarsMaskTex);
+	D3DXCreateTextureFromFile(g_Device,"resources/Textures/texture-stars.tga",&StarsTex);
+	if(!D3DXLoadMeshFromX("sphere.x",D3DXMESH_SYSTEMMEM,g_Device,NULL,NULL,NULL,NULL,&skySphere)){
+		return false;
+	}
 	return true;
 }
 struct _VERTEX {
@@ -55,16 +62,12 @@ bool CSkyRender::CreateSkySphere(float fRad,UINT slices,UINT stacks) {
 }
 void CSkyRender::PreRender(D3DXVECTOR4 *pos,D3DXMATRIX *viewproj)
 {
-	g_Device->EndScene();
-	if (!skySphere)
-	{
-		CreateSkySphere(Timecycle->m_fCurrentFarClip*0.9f,100,100);
-	}
-	g_Device->BeginScene();
-	D3DXMATRIX meshRotate, meshTranslate;
+	D3DXMATRIX meshRotate, meshTranslate, meshScale;
 	D3DXMatrixRotationY(&meshRotate, D3DXToRadian(0));
 	D3DXMatrixTranslation(&meshTranslate, pos->x,pos->y,pos->z);
+	//D3DXMatrixScaling(&meshScale, Timecycle->m_fCurrentFarClip*0.5f,Timecycle->m_fCurrentFarClip*0.5f,Timecycle->m_fCurrentFarClip*0.5f);
 	D3DXMatrixMultiply(&gm_World, &meshRotate, &meshTranslate);
+	//D3DXMatrixMultiply(&gm_World, &gm_World, &meshScale);
 	D3DXMatrixMultiplyTranspose(&gm_WorldViewProjection, &gm_World, viewproj);
 }
 void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
@@ -72,6 +75,8 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 	UINT passes;
 	m_pEffect->SetTechnique("Sky");
 	m_pEffect->SetTexture("cloudTex",CloudTex);
+	m_pEffect->SetTexture("starsTex",StarsTex);
+	m_pEffect->SetTexture("starsMaskTex",StarsMaskTex);
 	m_pEffect->SetVector("lightDirection",lightDirection);
 	m_pEffect->SetVector("skyColorTop",&D3DXVECTOR4((float)Timecycle->m_nCurrentSkyTopRed/255.0f,
 													(float)Timecycle->m_nCurrentSkyTopGreen/255.0f,
@@ -89,6 +94,13 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 	m_pEffect->SetFloat("fCloud1Transp",Timecycle->m_fCloudAlpha1/255.0f);
 	m_pEffect->SetMatrix("gmWorldViewProj",&gm_WorldViewProjection);
 	m_pEffect->SetMatrix("gmWorld",&gm_World);
+	int Hours = (int)(*(BYTE *)0xB70153);
+	int Mins = (int)(*(BYTE *)0xB70152);
+	int Secs = (int)(*(BYTE *)0xB70150);
+	float f_Time = ((float)Hours+(float)Mins/60.0f+(float)Secs/60/60)/24.0f;
+	m_pEffect->SetFloat("time",f_Time);
+	m_pEffect->SetFloat("StarsAlp",(*_daylightLightingState));
+	m_pEffect->SetFloat("fRadius",Timecycle->m_fCurrentFarClip/10.0f);
 	GetCurrentStates();
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)1);
 	RwEngineInstance->dOpenDevice.fpRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)1);
@@ -105,7 +117,4 @@ void CSkyRender::Render(D3DXVECTOR4 *lightDirection)
 }
 void CSkyRender::Release()
 {
-	if(skySphere){
-		SAFE_RELEASE(skySphere);
-	}
 }

@@ -2,7 +2,9 @@
 float4x4 gmWorldViewProj;
 float4x4 gmWorld;
 //--------------------------------Textures--------------------------------
-texture2D cloudTex;
+const texture cloudTex;
+const texture starsTex;
+const texture starsMaskTex;
 //--------------------------------Vectors---------------------------------
 float3 lightDirection;
 float3 skyColorTop;
@@ -11,6 +13,9 @@ float4 TopCloudColor;
 //--------------------------------Scalars---------------------------------
 float fCloudCover;
 float fCloud1Transp;
+float fRadius;
+float time;
+float StarsAlp = 0;
 //--------------------------------Samplers--------------------------------
 sampler2D cloudSampler = sampler_state
 {
@@ -20,6 +25,24 @@ sampler2D cloudSampler = sampler_state
    MipFilter = None;
    AddressU = Wrap;
    AddressV = Wrap;
+};
+sampler StarsSample = sampler_state {
+    Texture   = <starsTex>;
+    ADDRESSU  = WRAP;
+    ADDRESSV  = WRAP;
+    ADDRESSW  = WRAP;
+    MAGFILTER = LINEAR;
+    MINFILTER = LINEAR;
+    MIPFILTER = LINEAR;
+};
+sampler MaskSample = sampler_state {
+    Texture   = <starsMaskTex>;
+    ADDRESSU  = WRAP;
+    ADDRESSV  = WRAP;
+    ADDRESSW  = WRAP;
+    MAGFILTER = LINEAR;
+    MINFILTER = LINEAR;
+    MIPFILTER = LINEAR;
 };
 //--------------------------------Helpers---------------------------------
 float4 ComputeClouds(float2 uv)
@@ -56,6 +79,7 @@ struct VS_SKY_OUTPUT
 VS_SKY_OUTPUT skyVS(VS_SKY_INPUT IN)
 {
     VS_SKY_OUTPUT OUT;
+	IN.pos *= fRadius*0.9;
 	float3 wpos = mul(IN.pos,gmWorld).xyz;
     OUT.vpos=mul(gmWorldViewProj,float4(IN.pos.xyz,1.0));
 	OUT.normal = IN.pos.xyz;
@@ -66,14 +90,14 @@ VS_SKY_OUTPUT skyVS(VS_SKY_INPUT IN)
 //--------------------------------Pixel Shaders---------------------------
 Deferred_OUT skyPS(VS_SKY_OUTPUT IN) {
 	Deferred_OUT OUT;
-	half sunInfluence = dot( normalize(lightDirection.xyz),normalize( IN.normal.xyz ) )*0.25+0.75;
-	sunInfluence *= saturate( normalize(lightDirection.z) * 4.0 ) * 0.666 + 0.333;
-	sunInfluence = pow(saturate(sunInfluence),720.0f);
-	float3 skyColor = lerp(skyColorBottom,skyColorTop,smoothstep(-200.0, 200.0, IN.normal.z));
-	float4 clouds = ComputeClouds(IN.tex.xy*5);
-	OUT.col0 = float4(skyColor,1)*(1-clouds*fCloud1Transp)+(clouds*TopCloudColor*fCloud1Transp);
-	//OUT.col0.xyz *= 0.9;
-	OUT.col0.w = 2.0;
+	float3 skyColor = lerp(skyColorBottom,skyColorTop,smoothstep(-fRadius*2.5f, fRadius*2.5f, IN.normal.z));
+	if ( StarsAlp > 0 ) {
+		float4 Stars = tex2D( StarsSample, IN.tex * 4 ) ;
+		Stars *= tex2D( MaskSample, ( IN.tex * 2 ) + ( time / 75 ) ) * StarsAlp;
+		
+		skyColor += lerp(0 , Stars * 5, saturate((IN.normal.z - (-fRadius*2.5f)) / ((fRadius*2.5f) - (-fRadius*2.5f))));
+	}
+	OUT.col0 = float4(skyColor,2.0);
 	OUT.col1 = float4(0,0,1,0);
 	OUT.col2 = float4(0,0,0,3500);
 	return OUT;
@@ -81,8 +105,8 @@ Deferred_OUT skyPS(VS_SKY_OUTPUT IN) {
 //--------------------------------Techniques------------------------------
 technique Sky {
 	pass p0 {
-		VertexShader = compile vs_3_0 skyVS();
-		PixelShader  = compile ps_3_0 skyPS();
+		VertexShader = compile vs_2_0 skyVS();
+		PixelShader  = compile ps_2_0 skyPS();
 		AlphaTestEnable = true;
 		AlphaBlendEnable = false;
 	}
