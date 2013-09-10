@@ -66,6 +66,7 @@
 #define LightsCache ((RwD3D9Light*)0xC98088)
 #define CurrentRenderSurface ((IDirect3DSurface9 **)0xC98090)
 #define CurrentDepthStencilSurface (*(IDirect3DSurface9 **)0xC9808C)
+#define _daylightLightingState ((float*)0x8D12C0)
 
 #define UpdateTimer() ((void (__cdecl *)())0x561B10)()
 #define InitSprite2dPerFrame() ((void (__cdecl *)())0x727350)()
