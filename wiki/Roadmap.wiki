@@ -1,6 +1,4 @@
-#summary Roadmap.
-#labels 1
-
+#labels Phase-Design
 = Roadmap =
 ==Next version:==
   * Add config file.
