@@ -180,3 +180,6 @@ void CShadowMgr::Update() {
 	Scene->m_pRwCamera->frameBuffer->height = RsGlobal->MaximumHeight;
 	RwCameraBeginUpdate(Scene->m_pRwCamera);
 }
+void CShadowMgr::Shutdown() {
+	delete m_pEffect;
+}

@@ -20,5 +20,6 @@ public:
 	static RwCamera* m_pReflCam;
 	static RwFrame* m_pReflFrame;
 	static CRenderTarget *m_pReflectionRT[3];
+	static bool m_bUseAlphaTestForTexAlpha;
 };
 extern bool g_bDrawGUI;

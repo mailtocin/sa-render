@@ -16,5 +16,6 @@ public:
 	static void Patch();
 	static void Initialize();
 	static CEffect *m_pEffect;
+	static IDirect3DVolumeTexture9 *m_pStippleTex;
 };
 

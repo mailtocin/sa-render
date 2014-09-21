@@ -21,12 +21,12 @@ Global
 		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Debug|Win32.Build.0 = Debug|Win32
 		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Debug|x64.ActiveCfg = Debug|x64
 		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Debug|x64.Build.0 = Debug|x64
-		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|ARM.ActiveCfg = Release|ARM
-		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|ARM.Build.0 = Release|ARM
+		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|ARM.ActiveCfg = Release|Win32
+		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|ARM.Build.0 = Release|Win32
 		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|Win32.ActiveCfg = Release|Win32
 		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|Win32.Build.0 = Release|Win32
-		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|x64.ActiveCfg = Release|x64
-		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|x64.Build.0 = Release|x64
+		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|x64.ActiveCfg = Release|Win32
+		{56FCCB2C-B827-4C88-9512-32E2DC172F48}.Release|x64.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
