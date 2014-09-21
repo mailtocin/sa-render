@@ -18,7 +18,7 @@ public:
 	static ID3DXMesh* PointLightMesh;
 	static void Initialize();
 	static void DrawLight(ID3DXMesh *pMesh, D3DXVECTOR4* vPos);
-	static void RenderToGeometryBuffer(void* RenderFunc);
+	static void RenderToGeometryBuffer(void(*render)());
 	static void RenderToScreenOutput();
 	static void ReInitialize();
 	static void ShutDown();

@@ -86,6 +86,8 @@ typedef void CShadowManager;
 #define nGameClockHours ((int)(*(BYTE*)0xB70153))
 #define nGameClockMins ((int)(*(BYTE*)0xB70152))
 #define nGameClockSecs ((int)(*(BYTE*)0xB70150))
+#define nStateChanges (*(int*)0xC9A5EC)
+#define nTexStageStateChanges (*(int*)0xC9A5F0)
 
 #define Render2dStuffAdr()((int(__cdecl *)())(*(DWORD *)0x53EB13 + 0x53EB12 + 5))()
 #define RwFrameTransform(frame, matrix, combine) ((RwFrame * (__cdecl *)(RwFrame *, const void *, int)) 0x7F0F70)(frame, matrix, combine)

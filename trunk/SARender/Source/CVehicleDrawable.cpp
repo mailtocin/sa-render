@@ -37,25 +37,16 @@ void CVehicleDrawable::Initialize()
 
 void CVehicleDrawable::RenderCallBack(RwResEntry *RepEntry, RpAtomic *Atomic, unsigned char Type, char Flags)
 {
-	bool bHasNoTexture, bHasAlpha, bBurnout;
+	bool bHasAlpha, bBurnout;
 	void* pIndexBuffer;
 	RpGeometry *pGeometry;
 	RpMaterial *pMaterial;
 	D3DXMATRIX WorldViewProjection, World, mVP;
 	RxD3D9InstanceData *pMesh;
 	pGeometry = Atomic->geometry;
-	rwD3D9EnableClippingIfNeeded(Atomic, Type);
-	if (Flags & 8)
-		bHasNoTexture = false;
-	else
+	if (!(Flags & 8))
 	{
-		bHasNoTexture = true;
 		rwD3D9SetTexture(NULL, NULL);
-		rwD3D9SetRenderState(D3DRS_TEXTUREFACTOR, 0xFF000000u);
-		rwD3D9SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
-		rwD3D9SetTextureStageState(0, D3DTSS_COLORARG2, D3DTOP_SELECTARG2);
-		rwD3D9SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
-		rwD3D9SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTOP_SELECTARG2);
 	}
 	pIndexBuffer = RepEntry->header.indexBuffer;
 	pMesh = &RepEntry->meshData;
@@ -86,15 +77,16 @@ void CVehicleDrawable::RenderCallBack(RwResEntry *RepEntry, RpAtomic *Atomic, un
 	m_pEffect->SetVector(m_pEffect->m_params.vehicle.Ambient1, &cAmbientColor1);
 
 	// Floats.
-	m_pEffect->SetFloat(m_pEffect->m_params.vehicle.AmbientMultiplier, 0.3f);
+	m_pEffect->SetFloat(m_pEffect->m_params.vehicle.AmbientMultiplier, 0.5f);
 
 	for (unsigned int i = 0; i < RepEntry->header.numMeshes; i++) {
 		pMaterial = pMesh->material;
 		bHasAlpha = pMesh->vertexAlpha || pMaterial->color.alpha != 255;
-
-		//rwD3D9RenderStateVertexAlphaEnable(bHasAlpha);
+		if (pMaterial->texture&&!CGameIdle::m_bUseAlphaTestForTexAlpha)
+			bHasAlpha = bHasAlpha || RwD3D9TextureHasAlpha((int)pMaterial->texture);
 
 		m_pEffect->SetColor(m_pEffect->m_params.vehicle.PaintColor, &pMaterial->color);
+		m_pEffect->SetBool("bEnableVertexBlend", pMesh->vertexAlpha>0);
 		if (pMaterial->m_pSpecular && (pMaterial->surfaceProps.m_dwFlags & 4))
 			m_pEffect->SetFloat(m_pEffect->m_params.vehicle.Specularity, pMaterial->m_pSpecular->m_fLevel);
 		else
@@ -164,9 +156,15 @@ void CVehicleDrawable::RenderCallBack(RwResEntry *RepEntry, RpAtomic *Atomic, un
 				if (m_pBurnoutTex)
 					m_pEffect->SetTexture(m_pEffect->m_params.vehicle.BurnoutTexture, m_pBurnoutTex);
 			}
-			Render(&RepEntry->header, pMesh, m_pEffect);
+			if (gRenderState == RENDERTYPE_FORWARD&&bHasAlpha){
+				Render(&RepEntry->header, pMesh, m_pEffect);
+			}
+			if ((gRenderState == RENDERTYPE_DEFERRED&&!bHasAlpha)){
+				Render(&RepEntry->header, pMesh, m_pEffect);
+			}
 		}
 		else {
+
 			CShadowMgr::m_pEffect->SetFloat(CShadowMgr::m_pEffect->m_params.shadows.Alpha, (float)pMaterial->color.alpha/255.0f);
 			if (pMaterial->texture){
 				CShadowMgr::m_pEffect->SetTexture(CShadowMgr::m_pEffect->m_params.shadows.ColorTexture, pMaterial->texture);
@@ -175,8 +173,4 @@ void CVehicleDrawable::RenderCallBack(RwResEntry *RepEntry, RpAtomic *Atomic, un
 		}
 		pMesh++;
 	}
-	rwD3D9SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-	rwD3D9SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-	rwD3D9SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, 1);
-	rwD3D9SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
 }

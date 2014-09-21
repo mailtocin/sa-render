@@ -48,18 +48,14 @@ void CDeferredMgr::DrawLight(ID3DXMesh *pMesh, D3DXVECTOR4* vPos){
 	m_pEffect->GetD3DEffect()->End();
 }
 
-void CDeferredMgr::RenderToGeometryBuffer(void* RenderFunc){
+void CDeferredMgr::RenderToGeometryBuffer(void(*render)()){
 	RwCameraSetFarClipPlane(Scene->m_pRwCamera, CGTAVTimeCycle::GetCurrentFarClip());
 	gRTMgr.GetRef();
 	gRenderState = RENDERTYPE_DEFERRED;
 	for (int i = 0; i < 3; i++)
 		m_pGeomtryBuffer[i]->SetRenderTarget(i);
 	g_Device->Clear(0, 0, 3, D3DXCOLOR((float)Timecycle->m_nCurrentSkyTopRed / 255.0f, (float)Timecycle->m_nCurrentSkyTopGreen / 255.0f, (float)Timecycle->m_nCurrentSkyTopBlue / 255.0f, 0.0), 1.0, 0);
-	RenderRoads();
-	RenderEverythingBarRoads();         // CRenderer::RenderEverythingBarRoads
-	RenderFadingInUnderwaterEntities(); // CRenderer::RenderFadingInUnderwaterEntities
-	RenderFadingInEntities();
-	RenderPedWeapons();
+	render();
 }
 
 void CDeferredMgr::RenderToScreenOutput(){
@@ -72,16 +68,14 @@ void CDeferredMgr::RenderToScreenOutput(){
 	m_pEffect->SetTexture("LightingBuffer",	m_pLightingBuffer->GetTex());
 
 	// Vectors
-	m_pEffect->SetVector("g_vLightPos", &gGlobalsMgr.g_vSunPosition);
+	m_pEffect->SetVector("g_vLightPos", (*_daylightLightingState) ? &D3DXVECTOR4(gGlobalsMgr.g_vSunPosition*-1) : &gGlobalsMgr.g_vSunPosition);
 	m_pEffect->SetVector("g_vViewPos", &gGlobalsMgr.g_vCameraPosition);
-	D3DXVECTOR4 cAmbientColor0(Timecycle->m_fCurrentAmbientRed, Timecycle->m_fCurrentAmbientGreen, Timecycle->m_fCurrentAmbientBlue, 1.0f),
-				cAmbientColor1(Timecycle->m_fCurrentAmbientObjRed, Timecycle->m_fCurrentAmbientObjGreen, Timecycle->m_fCurrentAmbientObjBlue, 1.0f);
 	m_pEffect->SetVector(m_pEffect->m_globals.globals.Ambient0, &CGTAVTimeCycle::GetCurrentNatAmbLightColorUp());
 	m_pEffect->SetVector(m_pEffect->m_globals.globals.Ambient1, &CGTAVTimeCycle::GetCurrentNatAmbLightColorDown());
 	m_pEffect->SetVector("g_fInverseViewportDimensions", &D3DXVECTOR4(1.0f / (float)RsGlobal->MaximumWidth, 1.0f / (float)RsGlobal->MaximumHeight, 0, 0));
 
 	// Floats.
-	m_pEffect->SetFloat(m_pEffect->m_globals.globals.AmbientMultiplier, 0.5f);
+	m_pEffect->SetFloat(m_pEffect->m_globals.globals.AmbientMultiplier, 0.8f);
 	m_pEffect->SetFloat("g_fFarClip", CGTAVTimeCycle::GetCurrentFarClip());
 	m_pEffect->SetFloat("g_fNearClip", Scene->m_pRwCamera->nearPlane);
 
@@ -107,7 +101,8 @@ void CDeferredMgr::RenderToScreenOutput(){
 				m_pEffect->SetFloat("fLightRange", CLights::m_aLights[l].radius);
 				DrawLight(PointLightMesh, &D3DXVECTOR4(CLights::m_aLights[l].pos.x, CLights::m_aLights[l].pos.y, CLights::m_aLights[l].pos.z, CLights::m_aLights[l].radius));
 			}
-			if (CLights::m_aLights[l].type == LIGHT_TYPE_SPOT){
+			if (CLights::m_aLights[l].type == LIGHT_TYPE_SPOT)
+			{
 				m_pEffect->SetTechnique("SpotLight");
 				m_pEffect->SetVector("vLightPos", &D3DXVECTOR4(CLights::m_aLights[l].pos.x, CLights::m_aLights[l].pos.y, CLights::m_aLights[l].pos.z, 1));
 				m_pEffect->SetVector("vSpotLightDir", &D3DXVECTOR4(CLights::m_aLights[l].dir.x, CLights::m_aLights[l].dir.y, CLights::m_aLights[l].dir.z, 1));

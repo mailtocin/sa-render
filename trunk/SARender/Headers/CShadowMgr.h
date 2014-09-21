@@ -34,6 +34,7 @@ public:
 	static void CalculateMatrix(int iMatrixID);
 	static void Render(eShadowRenderType RenderType, float fDistance, int iMatrixID);
 	static void Update();
+	static void Shutdown();
 	static void SetShadowParamsToShader(CEffect *pEffect);
 	static CEffect *m_pEffect;
 	static D3DXMATRIX g_mLightViewProj[2];

@@ -31,12 +31,11 @@ void BeforeReset()
 	gEffectMgr.OnLostDevice();
 	gRTMgr.Lost();
 	TwWindowSize(0, 0);
-	
+	CDeferredMgr::ReInitialize();
 }
 
 void AfterReset()
 {
-	CDeferredMgr::ReInitialize();
 	gEffectMgr.OnResetDevice();
 	gRTMgr.Reset();
 	TwWindowSize(RsGlobal->MaximumWidth, RsGlobal->MaximumHeight);
@@ -47,6 +46,7 @@ void Shutdown()
 	CVehicleDrawable::Shutdown();
 	CBuildingDrawable::Shutdown();
 	CObjectDrawable::Shutdown();
+	CDeferredMgr::ShutDown();
 	gGUI.Shutdown();
 	gEffectMgr.Shutdown();
 	gRTMgr.Shutdown();
@@ -86,7 +86,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved)
 	{
 	case DLL_PROCESS_ATTACH:
 		CGTAVTimeCycle::ParseTC();
-		System::RegisterPlugin("SA::Render", "DK22Pac, PetkaGtA", "SA_Render.asi", "0.02d", 1, GAME_SA_1_0_US, NULL);
+		System::RegisterPlugin("SA::Render", "DK22Pac, PetkaGtA", "SA_Render.asi", "0.03d", 2, GAME_SA_1_0_US, NULL);
 		Core::RegisterFunc(FUNC_BEFORE_RESET, BeforeReset);
 		Core::RegisterFunc(FUNC_AFTER_RESET, AfterReset);
 		Patch();

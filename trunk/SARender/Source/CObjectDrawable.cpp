@@ -11,6 +11,7 @@
 #include "..\Headers\CRenderTarget.h"
 #include "..\Headers\CEffectMgr.h"
 #include "..\Headers\CShadowMgr.h"
+#include "..\CGTAVTimeCycle.h"
 
 CEffect *CObjectDrawable::m_pEffect;
 
@@ -18,6 +19,7 @@ void CObjectDrawable::Patch()
 {
 	CPatch::SetPointer(0x75E55E, RenderCallBack);
 	CPatch::SetPointer(0x7CB24B, RenderCallBack);
+	CPatch::SetPointer(0x7578AE, RenderCallBack);
 }
 
 void CObjectDrawable::Initialize()
@@ -27,25 +29,16 @@ void CObjectDrawable::Initialize()
 
 void CObjectDrawable::RenderCallBack(RwResEntry *RepEntry, RpAtomic *Atomic, unsigned char Type, char Flags)
 {
-	bool bHasNoTexture, bHasAlpha;
+	bool bHasAlpha;
 	void* pIndexBuffer;
 	RpGeometry *pGeometry;
 	RpMaterial *pMaterial;
 	D3DXMATRIX WorldViewProjection, World, mVP;
 	RxD3D9InstanceData *pMesh;
 	pGeometry = Atomic->geometry;
-	rwD3D9EnableClippingIfNeeded(Atomic, Type);
-	if (Flags & 8)
-		bHasNoTexture = false;
-	else
+	if (!(Flags & 8))
 	{
-		bHasNoTexture = true;
 		rwD3D9SetTexture(NULL, NULL);
-		rwD3D9SetRenderState(D3DRS_TEXTUREFACTOR, 0xFF000000u);
-		rwD3D9SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
-		rwD3D9SetTextureStageState(0, D3DTSS_COLORARG2, D3DTOP_SELECTARG2);
-		rwD3D9SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
-		rwD3D9SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTOP_SELECTARG2);
 	}
 	pIndexBuffer = RepEntry->header.indexBuffer;
 	pMesh = &RepEntry->meshData;
@@ -69,27 +62,19 @@ void CObjectDrawable::RenderCallBack(RwResEntry *RepEntry, RpAtomic *Atomic, uns
 
 	m_pEffect->SetVector(m_pEffect->m_params.object.LightPosition, &gGlobalsMgr.g_vSunPosition);
 	m_pEffect->SetVector(m_pEffect->m_params.object.ViewPosition, &gGlobalsMgr.g_vCameraPosition);
-	D3DXCOLOR ambientColor, ambientColor2;
-	ambientColor.r = (float)Timecycle->m_fCurrentAmbientRed;
-	ambientColor.g = (float)Timecycle->m_fCurrentAmbientGreen;
-	ambientColor.b = (float)Timecycle->m_fCurrentAmbientBlue;
-	ambientColor.a = 1.0;
-	ambientColor2.r = (float)Timecycle->m_fCurrentAmbientObjRed;
-	ambientColor2.g = (float)Timecycle->m_fCurrentAmbientObjGreen;
-	ambientColor2.b = (float)Timecycle->m_fCurrentAmbientObjBlue;
-	ambientColor2.a = 1.0;
-	m_pEffect->SetVector(m_pEffect->m_params.object.Ambient0, (D3DXVECTOR4 *)&ambientColor);
-	m_pEffect->SetVector(m_pEffect->m_params.object.Ambient1, (D3DXVECTOR4 *)&ambientColor2);
+	m_pEffect->SetVector(m_pEffect->m_params.building.Ambient0, &CGTAVTimeCycle::GetCurrentNatAmbLightColorUp());
+	m_pEffect->SetVector(m_pEffect->m_params.building.Ambient1, &CGTAVTimeCycle::GetCurrentNatAmbLightColorDown());
 	m_pEffect->SetFloat(m_pEffect->m_params.object.AmbientMultiplier, 0.3f);
 	m_pEffect->SetFloat(m_pEffect->m_params.object.ReflectDir, gGlobalsMgr.g_fReflDir);
 
 	for (unsigned int i = 0; i < RepEntry->header.numMeshes; i++) {
 		pMaterial = pMesh->material;
-		rwD3D9SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-		rwD3D9SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
 		bHasAlpha = pMesh->vertexAlpha || pMaterial->color.alpha != 255;
-		//rwD3D9RenderStateVertexAlphaEnable(bHasAlpha);
+		if (pMaterial->texture&&!CGameIdle::m_bUseAlphaTestForTexAlpha)
+			bHasAlpha = bHasAlpha || RwD3D9TextureHasAlpha((int)pMaterial->texture);
+
 		m_pEffect->SetColor(m_pEffect->m_params.object.Color, &pMaterial->color);
+		m_pEffect->SetBool("bEnableVertexBlend", pMesh->vertexAlpha>0);
 
 		if (CGameIdle::m_pReflectionRT[0] && CGameIdle::m_pReflectionRT[1]){
 			m_pEffect->SetTexture("reflTex0", CGameIdle::m_pReflectionRT[0]->GetTex());
@@ -116,7 +101,12 @@ void CObjectDrawable::RenderCallBack(RwResEntry *RepEntry, RpAtomic *Atomic, uns
 				else if (gRenderState == RENDERTYPE_DEFERRED)
 					m_pEffect->SetTechnique(m_pEffect->m_techniques.object.DeferredColor);
 			}
-			Render(&RepEntry->header, pMesh, m_pEffect);
+			if (gRenderState == RENDERTYPE_FORWARD&&bHasAlpha){
+				Render(&RepEntry->header, pMesh, m_pEffect);
+			}
+			if ((gRenderState == RENDERTYPE_DEFERRED&&!bHasAlpha)){
+				Render(&RepEntry->header, pMesh, m_pEffect);
+			}
 		} else {
 			CShadowMgr::m_pEffect->SetFloat(CShadowMgr::m_pEffect->m_params.shadows.Alpha, (float)pMaterial->color.alpha / 255.0f);
 			if (pMaterial->texture){
@@ -126,8 +116,4 @@ void CObjectDrawable::RenderCallBack(RwResEntry *RepEntry, RpAtomic *Atomic, uns
 		}
 		pMesh++;
 	}
-	rwD3D9SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-	rwD3D9SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-	rwD3D9SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, 1);
-	rwD3D9SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, 0);
 }

@@ -6,6 +6,7 @@
 /* File created: 12.05.2014                                                                */
 /* File last ed: 25.07.2014                                                                */
 /*******************************************************************************************/
+//#define DEBUG_TIMING //If enabled can crash on XP or x86 systems for some strange reason(GetTickCount64 for some reason)
 #include "..\Headers\CGameIdle.h"
 #include "..\Headers\AntTweakBar.h"
 #include "patch\CPatch.h"
@@ -39,6 +40,9 @@ LRESULT CALLBACK MessageProc(int code, WPARAM wParam, LPARAM lParam) {
 RwCamera *CGameIdle::m_pReflCam;
 RwFrame *CGameIdle::m_pReflFrame;
 CRenderTarget *CGameIdle::m_pReflectionRT[3];
+bool CGameIdle::m_bUseAlphaTestForTexAlpha = true;
+IDirect3DStateBlock9* gStateBlock = NULL;
+#ifdef DEBUG_TIMING
 __int64 Freq;
 __int64 Start;
 __int64 Now;
@@ -46,6 +50,7 @@ double fReflTime;
 double fGBuffTime;
 double fDeferredTime;
 double fShadowTime;
+#endif
 void nullsub(void*){
 
 }
@@ -63,7 +68,7 @@ void CGameIdle::Patch()
 	g_bDrawGUI = false;
 	CPatch::RedirectCall(0x53ECBD, Idle);
 	CPatch::RedirectCall(0x5BD71C, InitWorld);
-	
+	CPatch::SetInt(0x619626, 60);
 	CPatch::RedirectCall(0x53C1AB, nullsub);
 	SetWindowsHookEx(WH_GETMESSAGE, MessageProc, NULL, GetCurrentThreadId());
 }
@@ -81,10 +86,12 @@ void CGameIdle::Initialize(){
 		RwObjectHasFrameSetFrame(&m_pReflCam->object.object, m_pReflFrame);
 		RpWorldAddCamera(Scene->m_pRpWorld, m_pReflCam);
 	}
+#ifdef DEBUG_TIMING
 	gGUI.AddVar("Reflection Time", TW_TYPE_DOUBLE, &fReflTime);
 	gGUI.AddVar("GBuffer Time", TW_TYPE_DOUBLE, &fGBuffTime);
 	gGUI.AddVar("Deferred Time", TW_TYPE_DOUBLE, &fDeferredTime);
 	gGUI.AddVar("Shadow Time", TW_TYPE_DOUBLE, &fShadowTime);
+#endif
 }
 
 void CGameIdle::RenderReflections(CVector vPositon,int id){
@@ -125,10 +132,14 @@ void CGameIdle::RenderReflections(CVector vPositon,int id){
 	gRenderState = RENDERTYPE_FORWARD;
 }
 void CGameIdle::RenderScene(){
+	
 	RenderRoads();
 	RenderEverythingBarRoads();         // CRenderer::RenderEverythingBarRoads
+	RenderBrokenObjects(byte_BB4240, 0);
+	RenderPedWeapons();
 	RenderFadingInUnderwaterEntities(); // CRenderer::RenderFadingInUnderwaterEntities
 	RenderFadingInEntities();
+	RenderBrokenObjects(byte_BB4240, 1);
 }
 void CGameIdle::Idle(void *Data)
 {
@@ -171,16 +182,16 @@ void CGameIdle::Idle(void *Data)
 		ConstructRendererRenderList(); // CRenderer::ConstructRenderList
 		PreRenderRenderer();           // CRenderer::PreRender
 		ProcessPedTasks();
-
+#ifdef DEBUG_TIMING
 		QueryPerformanceCounter((PLARGE_INTEGER)&Start);
 		QueryPerformanceFrequency((PLARGE_INTEGER)&Freq);
-
-		RenderReflections(*(CVector*)&gGlobalsMgr.g_vPlayerPosition, 0);
-		RenderReflections(*(CVector*)&gGlobalsMgr.g_vPlayerPosition, 1);
-
+#endif
+		//RenderReflections(*(CVector*)&gGlobalsMgr.g_vPlayerPosition, 0);
+		//RenderReflections(*(CVector*)&gGlobalsMgr.g_vPlayerPosition, 1);
+#ifdef DEBUG_TIMING
 		QueryPerformanceCounter((PLARGE_INTEGER)&Now);
 		fReflTime = ((double(Now - Start)) / (double)Freq) * 1000;
-
+#endif
 		if (LightningFlash) // CWeather::LightningFlash
 		{
 			Timecycle->m_nCurrentSkyBottomRed = 255;
@@ -194,42 +205,51 @@ void CGameIdle::Idle(void *Data)
 			return;
 		
 		DefinedState();
+		//g_Device->CreateStateBlock(D3DSBT_ALL, &gStateBlock);
 		RwCameraSetFarClipPlane(Scene->m_pRwCamera, Timecycle->m_fCurrentFarClip);
 		Scene->m_pRwCamera->fogPlane = Timecycle->m_fCurrentFogStart;
 		gGlobalsMgr.Initialize();
-
+#ifdef DEBUG_TIMING
 		QueryPerformanceCounter((PLARGE_INTEGER)&Start);
 		QueryPerformanceFrequency((PLARGE_INTEGER)&Freq);
-
+#endif
 		CShadowMgr::Update();
-
+#ifdef DEBUG_TIMING
 		QueryPerformanceCounter((PLARGE_INTEGER)&Now);
 		fShadowTime = ((double(Now - Start)) / (double)Freq) * 1000;
-
+#endif
 		CShadowMgr::SetShadowParamsToShader(CDeferredMgr::m_pEffect);
-
+#ifdef DEBUG_TIMING
 		QueryPerformanceCounter((PLARGE_INTEGER)&Start);
 		QueryPerformanceFrequency((PLARGE_INTEGER)&Freq);
-
+#endif
 		CDeferredMgr::RenderToGeometryBuffer(RenderScene);
-
+#ifdef DEBUG_TIMING
 		QueryPerformanceCounter((PLARGE_INTEGER)&Now);
 		fGBuffTime = ((double(Now - Start)) / (double)Freq) * 1000;
 
 		QueryPerformanceCounter((PLARGE_INTEGER)&Start);
 		QueryPerformanceFrequency((PLARGE_INTEGER)&Freq);
-
+#endif
 		CDeferredMgr::RenderToScreenOutput();
-
+#ifdef DEBUG_TIMING
 		QueryPerformanceCounter((PLARGE_INTEGER)&Now);
 		fDeferredTime = ((double(Now - Start)) / (double)Freq)*1000;
+#endif
+		gRenderState = RENDERTYPE_FORWARD;
 		RwD3D9RenderStateReset();
+		DefinedState();
+		RenderScene();
+		sub_707F40();
+		RenderStaticShadows();
+		RenderStoredShadows();
+
 		DefinedState();
 		_RenderEffects();
 		Render2dStuff();
 		
 //***********************************************************************************
-		RwD3D9RenderStateReset();
+		//RwD3D9RenderStateReset();
 		ShowCursor(g_bDrawGUI);
 		if (g_bDrawGUI)
 			TwDraw();
